@@ -9,7 +9,7 @@ class PBIFile:
     query_filter = parse('$.sections[*].visualContainers[*].query')
     filter_filter = parse('$.sections[*].visualContainers[*].filters')
     config_filter = parse('$.sections[*].visualContainers[*].config')
-    
+
     def __init__(self, filepath):
         self.filepath = filepath
         self.filename = os.path.basename(filepath)
@@ -34,12 +34,12 @@ class PBIFile:
             string = data.replace(chr(0), "").replace(chr(28), "").replace(chr(29), "").replace(chr(25), "").replace("\"[", "[").replace("]\"", "]").replace("\"{", "{").replace("}\"", "}").replace("\\\\", "\\").replace("\\\"", "\"")
             layout_modified = json.loads(string)
             return layout_modified
-    
 
-    def _write_layout(self):
+
+    def _write_modified_layout(self):
         """Write the cleaned JSON object to file"""
         with open('layout.json', 'w') as outfile:
-            json.dump(self.layout, outfile)
+            json.dump(self.layout_modified, outfile)
 
 
     def update_measures(self, old, new):
@@ -82,8 +82,8 @@ class PBIFile:
             if field in field_set:
                 matches[field] = True
         return matches
-        
-    
+
+
     def write_file(self):
         """Writes the pbix json to file"""
         root, filename = os.path.split(self.filepath)
@@ -127,14 +127,14 @@ class Visual:
         Find title of visual
         """
         title_filter = parse(f"$..@.title[*].properties.text.expr.Literal.Value")
-        title = title_filter.find(self.config)  
+        title = title_filter.find(self.config)
         if title:
             title = title[0].value
         else:
             title = None
         return title
-        
-        
+
+
     def update_measures(self, old, new):
         """
         Searches for relevant keys for measures and updates their value pairs
@@ -151,20 +151,11 @@ class Visual:
             table_measure_filter = parse(f"$..@[?(@.*=='{old}')].[queryRef, Name, queryName]")
 
             if measure_filter.find(self.config) or measure_filter.find(self.filters):
-                measure_filter.update(self.config, new_measure)
-                measure_filter.update(self.filters, new_measure)
-                measure_filter.update(self.query, new_measure)
-                measure_filter.update(self.dataTransforms, new_measure)
-
-                table_filter.update(self.config, new_table)
-                table_filter.update(self.filters, new_table)
-                table_filter.update(self.query, new_table)
-                table_filter.update(self.dataTransforms, new_table)
-
-                table_measure_filter.update(self.config, new)
-                table_measure_filter.update(self.filters, new)
-                table_measure_filter.update(self.query, new)
-                table_measure_filter.update(self.dataTransforms, new)
+                sections = [self.config, self.filters, self.query, self.dataTransforms]
+                for section in sections:
+                    measure_filter.update(section, new_measure)
+                    table_filter.update(section, new_table)
+                    table_measure_filter.update(section, new)
 
                 self.layout_string['config'] = json.dumps(self.config)
                 self.layout_string['filters'] = json.dumps(self.filters)
