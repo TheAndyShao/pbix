@@ -44,14 +44,10 @@ class PBIFile:
     def update_measures(self, old, new):
         """Iterates through pages and visuals in a pbix and replaces specified measure/column"""
         print(f'Updating: {self.filename}')
-        pages = self.layout['sections']
-        for i, page in enumerate(pages):
-            visuals = page['visualContainers']
-            for j, visual in enumerate(visuals):
-                vis = Visual(visual)
-                vis.update_measures(old, new)
-                self.layout['sections'][i]['visualContainers'][j] = vis.layout_string
-                self.updated += vis.updated
+        for i, j, visual in self.generic_visuals_generator():
+                visual.update_measures(old, new)
+                self._update_visual_layout(i, j, visual.layout_string)
+                self.updated += visual.updated
         if self.updated == 0:
             print('No measures to update')
 
