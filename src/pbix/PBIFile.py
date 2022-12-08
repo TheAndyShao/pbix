@@ -5,10 +5,6 @@ from jsonpath_ng.ext import parse # ext implements filter functionality to parse
 
 class PBIFile:
 
-    query_filter = parse('$.sections[*].visualContainers[*].query')
-    filter_filter = parse('$.sections[*].visualContainers[*].filters')
-    config_filter = parse('$.sections[*].visualContainers[*].config')
-
     def __init__(self, filepath):
         self.filepath = filepath
         self.filename = os.path.basename(filepath)
