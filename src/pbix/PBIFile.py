@@ -9,22 +9,22 @@ from jsonpath_ng.ext import parse # ext implements filter functionality to parse
 class PBIFile:
     """A class to represent a thin Power BI report."""
 
-    def __init__(self, filepath):
-        self.filepath = filepath
-        self.filename = os.path.basename(filepath)
-        self.layout = self.read_layout(filepath)
-        self.field_set = None
-        self.layout_modified = self.read_modified_layout(filepath)
-        self.updated = 0
+    def __init__(self, filepath: str) -> None:
+        self.filepath: str = filepath
+        self.filename: str = os.path.basename(filepath)
+        self.layout: str = self.read_layout(filepath)
+        self.field_set: set[str] = None
+        self.layout_modified: str = self.read_modified_layout(filepath)
+        self.updated: int = 0
 
-    def read_layout(self, filepath):
+    def read_layout(self, filepath: str) -> str:
         """Return a cleaned JSON object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, 'r') as zip_file:
             data = zip_file.read('Report/Layout').decode("utf-16")
             layout = json.loads(data)
             return layout
 
-    def read_modified_layout(self, filepath):
+    def read_modified_layout(self, filepath: str) -> str:
         """Return a cleaned JSON object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, 'r') as zip_file:
             data = zip_file.read('Report/Layout').decode("utf-16")
@@ -32,12 +32,12 @@ class PBIFile:
             layout_modified = json.loads(string)
             return layout_modified
 
-    def _write_modified_layout(self):
+    def _write_modified_layout(self) -> None:
         """Write the cleaned JSON object to file."""
         with open('layout.json', 'w', encoding="utf-16") as outfile:
             json.dump(self.layout_modified, outfile)
 
-    def update_measures(self, old, new):
+    def update_measures(self, old: str, new: str) -> None:
         """Iterates through pages and visuals in a pbix and replaces specified measure/column."""
         print(f'Updating: {self.filename}')
         for i, j, visual in self._generic_visuals_generator():
@@ -47,18 +47,18 @@ class PBIFile:
         if self.updated == 0:
             print('No measures to update')
 
-    def _generic_visuals_generator(self):
+    def _generic_visuals_generator(self) -> None:
         """Generator for iterating through all visuals in a file."""
         for i, page in enumerate(self.layout['sections']):
             visuals = page['visualContainers']
             for j, visual in enumerate(visuals):
                 yield i, j, GenericVisual(visual)
 
-    def _update_visual_layout(self, page, visual, layout):
+    def _update_visual_layout(self, page: int, visual: int, layout: str) -> None:
         """Updates visual layout with new definition."""
         self.layout['sections'][page]['visualContainers'][visual] = layout
 
-    def update_slicers(self):
+    def update_slicers(self) -> None:
         """Iterates through pages and genric visuals and updates slicers."""
         for i, j, visual in self._generic_visuals_generator():
             if visual.type == 'slicer':
@@ -69,7 +69,7 @@ class PBIFile:
         if self.updated == 0:
             print('No slicers to update')
 
-    def get_all_fields(self):
+    def get_all_fields(self) -> None:
         """Get a list of used fields in the pbix file."""
         jsonpath_filters = parse(
                 '$.sections[*].visualContainers[*].filters[*].expression.Measure.Property'
@@ -80,10 +80,9 @@ class PBIFile:
 
         filter_set = set([match.value for match in jsonpath_filters.find(self.layout_modified)])
         measure_set = set([match.value for match in jsonpath_measures.find(self.layout_modified)])
-
         self.field_set = filter_set.union(measure_set)
 
-    def find_instances(self, fields):
+    def find_instances(self, fields: list[str]) -> dict[str, bool]:
         """Compare input fields with the fields used in the pbix file."""
         self.get_all_fields()
 
@@ -98,7 +97,7 @@ class PBIFile:
                 matches[field] = True
         return matches
 
-    def write_file(self):
+    def write_file(self) -> None:
         """Writes the pbix json to file."""
         _, filename = os.path.split(self.filepath)
         base, ext = os.path.splitext(filename)
@@ -119,11 +118,11 @@ class PBIFile:
 class GenericVisual:
     """A base class to represent a generic visual object."""
 
-    def __init__(self, layout):
-        self.layout_string = layout
-        self.config = json.loads(self.layout_string['config'])
-        self.title = self.return_visual_title()
-        self.type = self.return_visual_type()
+    def __init__(self, layout: str) -> None:
+        self.layout_string: str = layout
+        self.config: str = json.loads(self.layout_string['config'])
+        self.title: str or None = self.return_visual_title()
+        self.type: str or None = self.return_visual_type()
         try:
             self.filters = json.loads(self.layout_string['filters'])
             self.query = json.loads(self.layout_string['query'])
@@ -134,19 +133,19 @@ class GenericVisual:
             self.dataTransforms = None
         self.updated = 0
 
-    def return_visual_title(self):
+    def return_visual_title(self) -> str or None:
         """Return title of visual."""
         title_path = parse("$..@.title[*].properties.text.expr.Literal.Value")
         title = title_path.find(self.config)
         return title[0].value if title else None
 
-    def return_visual_type(self):
+    def return_visual_type(self) -> str or None:
         """Return type of visual."""
         typ_path = parse("$.singleVisual.visualType")
         typ = typ_path.find(self.config)
         return typ[0].value if typ else None
 
-    def update_measures(self, old, new):
+    def update_measures(self, old: str, new: str) -> None:
         """Searches for relevant keys for measures and updates their value pairs."""
         if self.query: # Ignore shapes, textboxes etc.
 
@@ -183,7 +182,7 @@ class GenericVisual:
 class Slicer(GenericVisual):
     """A class representing a slicer."""
 
-    def unselect_all_items(self):
+    def unselect_all_items(self) -> None:
         """Unselects all slicer members where no default selection is defined"""
         slicer_path = parse(
             "$.singleVisual.objects.data[*].properties.isInvertedSelectionMode.`parent`"
