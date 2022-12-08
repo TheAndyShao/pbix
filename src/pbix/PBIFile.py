@@ -38,14 +38,14 @@ class PBIFile:
     def update_measures(self, old, new):
         """Iterates through pages and visuals in a pbix and replaces specified measure/column."""
         print(f'Updating: {self.filename}')
-        for i, j, visual in self.generic_visuals_generator():
+        for i, j, visual in self._generic_visuals_generator():
             visual.update_measures(old, new)
             self._update_visual_layout(i, j, visual.layout_string)
             self.updated += visual.updated
         if self.updated == 0:
             print('No measures to update')
 
-    def generic_visuals_generator(self):
+    def _generic_visuals_generator(self):
         """Generator for iterating through all visuals in a file."""
         for i, page in enumerate(self.layout['sections']):
             visuals = page['visualContainers']
@@ -58,7 +58,7 @@ class PBIFile:
 
     def update_slicers(self):
         """Iterates through pages and genric visuals and updates slicers."""
-        for i, j, visual in self.generic_visuals_generator():
+        for i, j, visual in self._generic_visuals_generator():
             if visual.type == 'slicer':
                 slicer = Slicer(visual.layout_string)
                 slicer.unselect_all_items()
