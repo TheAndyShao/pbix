@@ -106,7 +106,7 @@ class PBIFile:
 
     def write_file(self):
         """Writes the pbix json to file"""
-        root, filename = os.path.split(self.filepath)
+        _, filename = os.path.split(self.filepath)
         base, ext = os.path.splitext(filename)
         temp_filepath = os.path.join(f"{base} Temp{ext}")
 
