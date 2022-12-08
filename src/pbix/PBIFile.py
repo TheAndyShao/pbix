@@ -131,8 +131,8 @@ class Visual:
         self.width = self.layout_string['width']
         self.height = self.layout_string['height']
         self.config = json.loads(self.layout_string['config'])
-        self.title = self.find_title()
-        self.type = self.find_type()
+        self.title = self.return_visual_title()
+        self.type = self.return_visual_type()
         try:
             self.filters = json.loads(self.layout_string['filters'])
             self.query = json.loads(self.layout_string['query'])
@@ -143,29 +143,17 @@ class Visual:
             self.dataTransforms = None
         self.updated = 0
 
-    def find_title(self):
-        """
-        Find title of visual
-        """
-        title_filter = parse("$..@.title[*].properties.text.expr.Literal.Value")
-        title = title_filter.find(self.config)
-        if title:
-            title = title[0].value
-        else:
-            title = None
-        return title
+    def return_visual_title(self):
+        """Return title of visual."""
+        title_path = parse("$..@.title[*].properties.text.expr.Literal.Value")
+        title = title_path.find(self.config)
+        return title[0].value if title else None
 
-    def find_type(self):
-        """
-        Find type of visual
-        """
-        vis_type_filter = parse("$.singleVisual.visualType")
-        vis_type = vis_type_filter.find(self.config)
-        if vis_type:
-            vis_type = vis_type[0].value
-        else:
-            vis_type = None
-        return vis_type
+    def return_visual_type(self):
+        """Return type of visual."""
+        typ_path = parse("$.singleVisual.visualType")
+        typ = typ_path.find(self.config)
+        return typ[0].value if typ else None
 
     def update_measures(self, old, new):
         """
