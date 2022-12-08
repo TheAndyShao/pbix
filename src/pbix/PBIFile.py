@@ -37,7 +37,7 @@ class PBIFile:
 
     def _write_modified_layout(self):
         """Write the cleaned JSON object to file"""
-        with open('layout.json', 'w') as outfile:
+        with open('layout.json', 'w', encoding="utf-16") as outfile:
             json.dump(self.layout_modified, outfile)
 
 
