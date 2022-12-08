@@ -125,11 +125,6 @@ class PBIFile:
 class Visual:
     def __init__(self, layout):
         self.layout_string = layout
-        self.x = self.layout_string['x']
-        self.y = self.layout_string['y']
-        self.z = self.layout_string['z']
-        self.width = self.layout_string['width']
-        self.height = self.layout_string['height']
         self.config = json.loads(self.layout_string['config'])
         self.title = self.return_visual_title()
         self.type = self.return_visual_type()
