@@ -3,7 +3,9 @@ import json
 import os
 from jsonpath_ng.ext import parse # ext implements filter functionality to parse
 
+
 class PBIFile:
+    """A class to represent a thin Power BI report."""
 
     def __init__(self, filepath):
         self.filepath = filepath
@@ -13,46 +15,42 @@ class PBIFile:
         self.layout_modified = self.read_modified_layout(filepath)
         self.updated = 0
 
-
     def read_layout(self, filepath):
-        """Return a cleaned JSON object of the layout file within the PBIX file"""
+        """Return a cleaned JSON object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, 'r') as zip_file:
             data = zip_file.read('Report/Layout').decode("utf-16")
             layout = json.loads(data)
             return layout
 
-
     def read_modified_layout(self, filepath):
-        """Return a cleaned JSON object of the layout file within the PBIX file"""
+        """Return a cleaned JSON object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, 'r') as zip_file:
             data = zip_file.read('Report/Layout').decode("utf-16")
             string = data.replace(chr(0), "").replace(chr(28), "").replace(chr(29), "").replace(chr(25), "").replace("\"[", "[").replace("]\"", "]").replace("\"{", "{").replace("}\"", "}").replace("\\\\", "\\").replace("\\\"", "\"")
             layout_modified = json.loads(string)
             return layout_modified
 
-
     def _write_modified_layout(self):
-        """Write the cleaned JSON object to file"""
+        """Write the cleaned JSON object to file."""
         with open('layout.json', 'w', encoding="utf-16") as outfile:
             json.dump(self.layout_modified, outfile)
 
-
     def update_measures(self, old, new):
-        """Iterates through pages and visuals in a pbix and replaces specified measure/column"""
+        """Iterates through pages and visuals in a pbix and replaces specified measure/column."""
         print(f'Updating: {self.filename}')
         for i, j, visual in self.generic_visuals_generator():
-                visual.update_measures(old, new)
-                self._update_visual_layout(i, j, visual.layout_string)
-                self.updated += visual.updated
+            visual.update_measures(old, new)
+            self._update_visual_layout(i, j, visual.layout_string)
+            self.updated += visual.updated
         if self.updated == 0:
             print('No measures to update')
 
     def generic_visuals_generator(self):
-        """Generator for iterating through all visuals in a file"""
+        """Generator for iterating through all visuals in a file."""
         for i, page in enumerate(self.layout['sections']):
             visuals = page['visualContainers']
             for j, visual in enumerate(visuals):
-                yield i, j, Visual(visual)
+                yield i, j, GenericVisual(visual)
 
     def _update_visual_layout(self, page, visual, layout):
         """Updates visual layout with new definition."""
@@ -70,7 +68,7 @@ class PBIFile:
             print('No slicers to update')
 
     def get_all_fields(self):
-        """Get a list of used fields in the pbix file"""
+        """Get a list of used fields in the pbix file."""
         jsonpath_filters = parse('$.sections[*].visualContainers[*].filters[*].expression.Measure.Property')
         jsonpath_measures = parse('$.sections[*].visualContainers[*].config.singleVisual.projections[*].*.[*].queryRef')
 
@@ -79,9 +77,8 @@ class PBIFile:
 
         self.field_set = filter_set.union(measure_set)
 
-
     def find_instances(self, fields):
-        """Compare input fields with the fields used in the pbix file"""
+        """Compare input fields with the fields used in the pbix file."""
         self.get_all_fields()
 
         matches = {}
@@ -95,9 +92,8 @@ class PBIFile:
                 matches[field] = True
         return matches
 
-
     def write_file(self):
-        """Writes the pbix json to file"""
+        """Writes the pbix json to file."""
         _, filename = os.path.split(self.filepath)
         base, ext = os.path.splitext(filename)
         temp_filepath = os.path.join(f"{base} Temp{ext}")
@@ -114,7 +110,9 @@ class PBIFile:
         os.rename(temp_filepath, self.filepath)
 
 
-class Visual:
+class GenericVisual:
+    """A base class to represent a generic visual object."""
+
     def __init__(self, layout):
         self.layout_string = layout
         self.config = json.loads(self.layout_string['config'])
@@ -143,10 +141,7 @@ class Visual:
         return typ[0].value if typ else None
 
     def update_measures(self, old, new):
-        """
-        Searches for relevant keys for measures and updates their value pairs
-        """
-
+        """Searches for relevant keys for measures and updates their value pairs."""
         if self.query: # Ignore shapes, textboxes etc.
 
             old_table, old_measure = old.split('.')
@@ -174,7 +169,7 @@ class Visual:
                 print(f"Updated: {self.title}")
 
 
-class Slicer(Visual):
+class Slicer(GenericVisual):
     """A class representing a slicer."""
 
     def unselect_all_items(self):
