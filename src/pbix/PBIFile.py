@@ -100,11 +100,11 @@ class PBIFile:
 
         with zf.ZipFile(self.filepath, "r") as original_zip:
             with zf.ZipFile(temp_filepath, "w", compression=zf.ZIP_DEFLATED) as new_zip:
-                for f in original_zip.namelist():
-                    if f == "Report/Layout":
-                        new_zip.writestr(f, json.dumps(self.layout).encode("utf-16-le"))
-                    elif f != "SecurityBindings":
-                        new_zip.writestr(f, original_zip.read(f))
+                for file in original_zip.namelist():
+                    if file == "Report/Layout":
+                        new_zip.writestr(file, json.dumps(self.layout).encode("utf-16-le"))
+                    elif file != "SecurityBindings":
+                        new_zip.writestr(file, original_zip.read(file))
 
         os.remove(self.filepath)
         os.rename(temp_filepath, self.filepath)
