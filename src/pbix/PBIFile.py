@@ -137,7 +137,7 @@ class Visual:
             self.filters = json.loads(self.layout_string['filters'])
             self.query = json.loads(self.layout_string['query'])
             self.dataTransforms = json.loads(self.layout_string['dataTransforms'])
-        except:
+        except KeyError:
             self.filters = None
             self.query = None
             self.dataTransforms = None
