@@ -126,11 +126,11 @@ class GenericVisual:
         try:
             self.filters = json.loads(self.layout_string['filters'])
             self.query = json.loads(self.layout_string['query'])
-            self.dataTransforms = json.loads(self.layout_string['dataTransforms'])
+            self.data_transforms = json.loads(self.layout_string['dataTransforms'])
         except KeyError:
             self.filters = None
             self.query = None
-            self.dataTransforms = None
+            self.data_transforms = None
         self.updated = 0
 
     def return_visual_title(self) -> str or None:
@@ -163,7 +163,7 @@ class GenericVisual:
                 )
 
             if measure_path.find(self.config) or measure_path.find(self.filters):
-                sections = [self.config, self.filters, self.query, self.dataTransforms]
+                sections = [self.config, self.filters, self.query, self.data_transforms]
                 for section in sections:
                     measure_path.update(section, new_measure)
                     table_path.update(section, new_table)
@@ -172,7 +172,7 @@ class GenericVisual:
                 self.layout_string['config'] = json.dumps(self.config)
                 self.layout_string['filters'] = json.dumps(self.filters)
                 self.layout_string['query'] = json.dumps(self.query)
-                self.layout_string['dataTransforms'] = json.dumps(self.dataTransforms)
+                self.layout_string['dataTransforms'] = json.dumps(self.data_transforms)
 
                 self.updated = 1
 
