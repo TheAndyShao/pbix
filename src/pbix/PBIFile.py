@@ -71,15 +71,15 @@ class PBIFile:
 
     def get_all_fields(self) -> None:
         """Get a list of used fields in the pbix file."""
-        jsonpath_filters = parse(
+        filters_path = parse(
                 '$.sections[*].visualContainers[*].filters[*].expression.Measure.Property'
             )
-        jsonpath_measures = parse(
+        measures_path = parse(
                 '$.sections[*].visualContainers[*].config.singleVisual.projections[*].*.[*].queryRef'
             )
 
-        filter_set = set([match.value for match in jsonpath_filters.find(self.layout_modified)])
-        measure_set = set([match.value for match in jsonpath_measures.find(self.layout_modified)])
+        filter_set = set([match.value for match in filters_path.find(self.layout_modified)])
+        measure_set = set([match.value for match in measures_path.find(self.layout_modified)])
         self.field_set = filter_set.union(measure_set)
 
     def find_instances(self, fields: list[str]) -> dict[str, bool]:
@@ -152,22 +152,22 @@ class GenericVisual:
             old_table, old_measure = old.split('.')
             new_table, new_measure = new.split('.')
 
-            measure_filter = parse(
+            measure_path = parse(
                     f"$..@[?(@.*=='{old_measure}')].[Property, displayName, Restatement]"
                 )
-            table_filter = parse(
+            table_path = parse(
                     f"$..@[?(@.*=='{old_table}')].Entity"
                 )
-            table_measure_filter = parse(
+            table_measure_path = parse(
                     f"$..@[?(@.*=='{old}')].[queryRef, Name, queryName]"
                 )
 
-            if measure_filter.find(self.config) or measure_filter.find(self.filters):
+            if measure_path.find(self.config) or measure_path.find(self.filters):
                 sections = [self.config, self.filters, self.query, self.dataTransforms]
                 for section in sections:
-                    measure_filter.update(section, new_measure)
-                    table_filter.update(section, new_table)
-                    table_measure_filter.update(section, new)
+                    measure_path.update(section, new_measure)
+                    table_path.update(section, new_table)
+                    table_measure_path.update(section, new)
 
                 self.layout_string['config'] = json.dumps(self.config)
                 self.layout_string['filters'] = json.dumps(self.filters)
