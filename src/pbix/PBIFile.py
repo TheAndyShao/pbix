@@ -69,8 +69,12 @@ class PBIFile:
 
     def get_all_fields(self):
         """Get a list of used fields in the pbix file."""
-        jsonpath_filters = parse('$.sections[*].visualContainers[*].filters[*].expression.Measure.Property')
-        jsonpath_measures = parse('$.sections[*].visualContainers[*].config.singleVisual.projections[*].*.[*].queryRef')
+        jsonpath_filters = parse(
+                '$.sections[*].visualContainers[*].filters[*].expression.Measure.Property'
+            )
+        jsonpath_measures = parse(
+                '$.sections[*].visualContainers[*].config.singleVisual.projections[*].*.[*].queryRef'
+            )
 
         filter_set = set([match.value for match in jsonpath_filters.find(self.layout_modified)])
         measure_set = set([match.value for match in jsonpath_measures.find(self.layout_modified)])
@@ -147,10 +151,15 @@ class GenericVisual:
             old_table, old_measure = old.split('.')
             new_table, new_measure = new.split('.')
 
-            # ? filter condition can only be used when looking inside a element, i.e. $..@[?(@) not $..[?(@)
-            measure_filter = parse(f"$..@[?(@.*=='{old_measure}')].[Property, displayName, Restatement]")
-            table_filter = parse(f"$..@[?(@.*=='{old_table}')].Entity")
-            table_measure_filter = parse(f"$..@[?(@.*=='{old}')].[queryRef, Name, queryName]")
+            measure_filter = parse(
+                    f"$..@[?(@.*=='{old_measure}')].[Property, displayName, Restatement]"
+                )
+            table_filter = parse(
+                    f"$..@[?(@.*=='{old_table}')].Entity"
+                )
+            table_measure_filter = parse(
+                    f"$..@[?(@.*=='{old}')].[queryRef, Name, queryName]"
+                )
 
             if measure_filter.find(self.config) or measure_filter.find(self.filters):
                 sections = [self.config, self.filters, self.query, self.dataTransforms]
@@ -174,7 +183,9 @@ class Slicer(GenericVisual):
 
     def unselect_all_items(self):
         """Unselects all slicer members where no default selection is defined"""
-        slicer_path = parse("$.singleVisual.objects.data[*].properties.isInvertedSelectionMode.`parent`")
+        slicer_path = parse(
+            "$.singleVisual.objects.data[*].properties.isInvertedSelectionMode.`parent`"
+        )
         selection_path = parse("$.singleVisual.objects.general[*].properties.filter")
         slicer = slicer_path.find(self.config)
         if slicer and not selection_path.find(self.config):
