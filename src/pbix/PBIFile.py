@@ -56,6 +56,27 @@ class PBIFile:
         if self.updated == 0:
             print('No measures to update')
 
+    def generic_visuals_generator(self):
+        """Generator for iterating through all visuals in a file"""
+        for i, page in enumerate(self.layout['sections']):
+            visuals = page['visualContainers']
+            for j, visual in enumerate(visuals):
+                yield i, j, Visual(visual)
+
+    def _update_visual_layout(self, page, visual, layout):
+        """Updates visual layout with new definition."""
+        self.layout['sections'][page]['visualContainers'][visual] = layout
+
+    def update_slicers(self):
+        """Iterates through pages and genric visuals and updates slicers."""
+        for i, j, visual in self.generic_visuals_generator():
+            if visual.type == 'slicer':
+                slicer = Slicer(visual.layout_string)
+                slicer.unselect_all_items()
+                self._update_visual_layout(i, j, slicer.layout_string)
+                self.updated += slicer.updated
+        if self.updated == 0:
+            print('No slicers to update')
 
     def get_all_fields(self):
         """Get a list of used fields in the pbix file"""
@@ -112,6 +133,7 @@ class Visual:
         self.height = self.layout_string['height']
         self.config = json.loads(self.layout_string['config'])
         self.title = self.find_title()
+        self.type = self.find_type()
         try:
             self.filters = json.loads(self.layout_string['filters'])
             self.query = json.loads(self.layout_string['query'])
@@ -134,6 +156,17 @@ class Visual:
             title = None
         return title
 
+    def find_type(self):
+        """
+        Find type of visual
+        """
+        vis_type_filter = parse(f"$.singleVisual.visualType")
+        vis_type = vis_type_filter.find(self.config)
+        if vis_type:
+            vis_type = vis_type[0].value
+        else:
+            vis_type = None
+        return vis_type
 
     def update_measures(self, old, new):
         """
@@ -165,3 +198,18 @@ class Visual:
                 self.updated = 1
 
                 print(f"Updated: {self.title}")
+
+
+class Slicer(Visual):
+    """A class representing a slicer."""
+
+    def unselect_all_items(self):
+        """Unselects all slicer members where no default selection is defined"""
+        slicer_path = parse("$.singleVisual.objects.data[*].properties.isInvertedSelectionMode.`parent`")
+        selection_path = parse("$.singleVisual.objects.general[*].properties.filter")
+        slicer = slicer_path.find(self.config)
+        if slicer and not selection_path.find(self.config):
+            slicer[0].value.pop('isInvertedSelectionMode')
+            self.layout_string['config'] = json.dumps(self.config)
+            self.updated = 1
+            print(f"Updated: {self.title}")
