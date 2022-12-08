@@ -1,7 +1,6 @@
 import zipfile as zf
 import json
 import os
-from jsonpath_ng import jsonpath
 from jsonpath_ng.ext import parse # ext implements filter functionality to parse
 
 class PBIFile:
