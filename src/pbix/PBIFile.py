@@ -1,3 +1,5 @@
+"""A module providing tools for manipulating thin Power BI reports"""
+
 import zipfile as zf
 import json
 import os
