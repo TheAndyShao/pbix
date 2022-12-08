@@ -147,7 +147,7 @@ class Visual:
         """
         Find title of visual
         """
-        title_filter = parse(f"$..@.title[*].properties.text.expr.Literal.Value")
+        title_filter = parse("$..@.title[*].properties.text.expr.Literal.Value")
         title = title_filter.find(self.config)
         if title:
             title = title[0].value
@@ -159,7 +159,7 @@ class Visual:
         """
         Find type of visual
         """
-        vis_type_filter = parse(f"$.singleVisual.visualType")
+        vis_type_filter = parse("$.singleVisual.visualType")
         vis_type = vis_type_filter.find(self.config)
         if vis_type:
             vis_type = vis_type[0].value
