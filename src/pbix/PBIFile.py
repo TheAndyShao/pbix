@@ -6,7 +6,7 @@ import os
 from jsonpath_ng.ext import parse # ext implements filter functionality to parse
 
 
-class PBIFile:
+class Report:
     """A class to represent a thin Power BI report."""
 
     def __init__(self, filepath: str) -> None:
