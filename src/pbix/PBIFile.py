@@ -13,8 +13,8 @@ class PBIFile:
         self.filepath: str = filepath
         self.filename: str = os.path.basename(filepath)
         self.layout: str = self.read_layout(filepath)
-        self.field_set: set[str] = None
         self.layout_modified: str = self.read_modified_layout(filepath)
+        self.field_set: set[str] = self.get_all_fields()
         self.updated: int = 0
 
     def read_layout(self, filepath: str) -> str:
@@ -80,12 +80,10 @@ class PBIFile:
 
         filter_set = set([match.value for match in filters_path.find(self.layout_modified)])
         measure_set = set([match.value for match in measures_path.find(self.layout_modified)])
-        self.field_set = filter_set.union(measure_set)
+        return filter_set.union(measure_set)
 
     def find_instances(self, fields: list[str]) -> dict[str, bool]:
         """Compare input fields with the fields used in the pbix file."""
-        self.get_all_fields()
-
         matches = {}
         for field in fields:
             if '.' in field:
