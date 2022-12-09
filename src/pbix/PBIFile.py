@@ -97,8 +97,7 @@ class PBIFile:
 
     def write_file(self) -> None:
         """Writes the pbix json to file."""
-        _, filename = os.path.split(self.filepath)
-        base, ext = os.path.splitext(filename)
+        base, ext = os.path.splitext(self.filename)
         temp_filepath = os.path.join(f"{base} Temp{ext}")
 
         with zf.ZipFile(self.filepath, "r") as original_zip:
