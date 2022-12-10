@@ -117,18 +117,18 @@ class GenericVisual:
 
     def __init__(self, layout: str) -> None:
         self.layout: str = layout
-        self.config: str = json.loads(self.layout['config'])
+        self.config: str = self._parse_visual_option('config')
+        self.filters: str = self._parse_visual_option('filters')
+        self.query: str = self._parse_visual_option('query')
+        self.data_transforms: str = self._parse_visual_option('dataTransforms')
         self.title: str or None = self.return_visual_title()
         self.type: str or None = self.return_visual_type()
-        self.filters: str = self._parse_config_option('filters')
-        self.query: str = self._parse_config_option('query')
-        self.data_transforms: str = self._parse_config_option('dataTransforms')
         self.updated: int = 0
 
-    def _parse_config_option(self, config_option: str) -> str or None:
-        """Returns a JSON object or None from config option string"""
-        if config_option in self.layout.keys():
-            return json.loads(self.layout[config_option])
+    def _parse_visual_option(self, visual_option: str) -> str or None:
+        """Returns a JSON object or None from visual option string"""
+        if visual_option in self.layout.keys():
+            return json.loads(self.layout[visual_option])
         return None
 
     def return_visual_title(self) -> str or None:
