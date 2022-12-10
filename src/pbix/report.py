@@ -120,15 +120,16 @@ class GenericVisual:
         self.config: str = json.loads(self.layout['config'])
         self.title: str or None = self.return_visual_title()
         self.type: str or None = self.return_visual_type()
-        try:
-            self.filters = json.loads(self.layout['filters'])
-            self.query = json.loads(self.layout['query'])
-            self.data_transforms = json.loads(self.layout['dataTransforms'])
-        except KeyError:
-            self.filters = None
-            self.query = None
-            self.data_transforms = None
+        self.filters = self._parse_config_option('filters')
+        self.query = self._parse_config_option('query')
+        self.data_transforms = self._parse_config_option('dataTransforms')
         self.updated = 0
+
+    def _parse_config_option(self, config_option: str) -> str or None:
+        """Returns a JSON object or None from config option string"""
+        if config_option in self.layout.keys():
+            return json.loads(self.layout[config_option])
+        return None
 
     def return_visual_title(self) -> str or None:
         """Return title of visual."""
