@@ -120,10 +120,10 @@ class GenericVisual:
         self.config: str = json.loads(self.layout['config'])
         self.title: str or None = self.return_visual_title()
         self.type: str or None = self.return_visual_type()
-        self.filters = self._parse_config_option('filters')
-        self.query = self._parse_config_option('query')
-        self.data_transforms = self._parse_config_option('dataTransforms')
-        self.updated = 0
+        self.filters: str = self._parse_config_option('filters')
+        self.query: str = self._parse_config_option('query')
+        self.data_transforms: str = self._parse_config_option('dataTransforms')
+        self.updated: int = 0
 
     def _parse_config_option(self, config_option: str) -> str or None:
         """Returns a JSON object or None from config option string"""
