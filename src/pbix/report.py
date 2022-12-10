@@ -42,7 +42,7 @@ class Report:
         print(f'Updating: {self.filename}')
         for i, j, visual in self._generic_visuals_generator():
             visual.update_measures(old, new)
-            self._update_visual_layout(i, j, visual.layout_string)
+            self._update_visual_layout(i, j, visual.layout)
             self.updated += visual.updated
         if self.updated == 0:
             print('No measures to update')
@@ -62,9 +62,9 @@ class Report:
         """Iterates through pages and genric visuals and updates slicers."""
         for i, j, visual in self._generic_visuals_generator():
             if visual.type == 'slicer':
-                slicer = Slicer(visual.layout_string)
+                slicer = Slicer(visual.layout)
                 slicer.unselect_all_items()
-                self._update_visual_layout(i, j, slicer.layout_string)
+                self._update_visual_layout(i, j, slicer.layout)
                 self.updated += slicer.updated
         if self.updated == 0:
             print('No slicers to update')
@@ -116,14 +116,14 @@ class GenericVisual:
     """A base class to represent a generic visual object."""
 
     def __init__(self, layout: str) -> None:
-        self.layout_string: str = layout
-        self.config: str = json.loads(self.layout_string['config'])
+        self.layout: str = layout
+        self.config: str = json.loads(self.layout['config'])
         self.title: str or None = self.return_visual_title()
         self.type: str or None = self.return_visual_type()
         try:
-            self.filters = json.loads(self.layout_string['filters'])
-            self.query = json.loads(self.layout_string['query'])
-            self.data_transforms = json.loads(self.layout_string['dataTransforms'])
+            self.filters = json.loads(self.layout['filters'])
+            self.query = json.loads(self.layout['query'])
+            self.data_transforms = json.loads(self.layout['dataTransforms'])
         except KeyError:
             self.filters = None
             self.query = None
@@ -166,10 +166,10 @@ class GenericVisual:
                     table_path.update(section, new_table)
                     table_measure_path.update(section, new)
 
-                self.layout_string['config'] = json.dumps(self.config)
-                self.layout_string['filters'] = json.dumps(self.filters)
-                self.layout_string['query'] = json.dumps(self.query)
-                self.layout_string['dataTransforms'] = json.dumps(self.data_transforms)
+                self.layout['config'] = json.dumps(self.config)
+                self.layout['filters'] = json.dumps(self.filters)
+                self.layout['query'] = json.dumps(self.query)
+                self.layout['dataTransforms'] = json.dumps(self.data_transforms)
 
                 self.updated = 1
 
@@ -188,6 +188,6 @@ class Slicer(GenericVisual):
         slicer = slicer_path.find(self.config)
         if slicer and not selection_path.find(self.config):
             slicer[0].value.pop('isInvertedSelectionMode')
-            self.layout_string['config'] = json.dumps(self.config)
+            self.layout['config'] = json.dumps(self.config)
             self.updated = 1
             print(f"Updated: {self.title}")
