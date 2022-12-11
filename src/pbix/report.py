@@ -12,19 +12,19 @@ class Report:
     def __init__(self, filepath: str) -> None:
         self.filepath: str = filepath
         self.filename: str = os.path.basename(filepath)
-        self.layout: str = self.read_layout(filepath)
-        self.layout_modified: str = self.read_modified_layout(filepath)
+        self.layout: str = self._read_layout(filepath)
+        self.layout_modified: str = self._read_modified_layout(filepath)
         self.field_set: set[str] = self.get_all_fields()
         self.updated: int = 0
 
-    def read_layout(self, filepath: str) -> str:
+    def _read_layout(self, filepath: str) -> str:
         """Return a cleaned JSON object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, 'r') as zip_file:
             data = zip_file.read('Report/Layout').decode("utf-16")
             layout = json.loads(data)
             return layout
 
-    def read_modified_layout(self, filepath: str) -> str:
+    def _read_modified_layout(self, filepath: str) -> str:
         """Return a cleaned JSON object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, 'r') as zip_file:
             data = zip_file.read('Report/Layout').decode("utf-16")
@@ -32,7 +32,7 @@ class Report:
             layout_modified = json.loads(string)
             return layout_modified
 
-    def _write_modified_layout(self) -> None:
+    def write_json_layout(self) -> None:
         """Write the cleaned JSON object to file."""
         with open('layout.json', 'w', encoding="utf-16") as outfile:
             json.dump(self.layout_modified, outfile)
@@ -121,8 +121,8 @@ class GenericVisual:
         self.filters: str = self._parse_visual_option('filters')
         self.query: str = self._parse_visual_option('query')
         self.data_transforms: str = self._parse_visual_option('dataTransforms')
-        self.title: str or None = self.return_visual_title()
-        self.type: str or None = self.return_visual_type()
+        self.title: str or None = self._return_visual_title()
+        self.type: str or None = self._return_visual_type()
         self.updated: int = 0
 
     def _parse_visual_option(self, visual_option: str) -> str or None:
@@ -131,13 +131,13 @@ class GenericVisual:
             return json.loads(self.layout[visual_option])
         return None
 
-    def return_visual_title(self) -> str or None:
+    def _return_visual_title(self) -> str or None:
         """Return title of visual."""
         title_path = parse("$..@.title[*].properties.text.expr.Literal.Value")
         title = title_path.find(self.config)
         return title[0].value if title else None
 
-    def return_visual_type(self) -> str or None:
+    def _return_visual_type(self) -> str or None:
         """Return type of visual."""
         typ_path = parse("$.singleVisual.visualType")
         typ = typ_path.find(self.config)
