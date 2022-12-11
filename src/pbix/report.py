@@ -161,17 +161,17 @@ class GenericVisual:
                 )
 
             if measure_path.find(self.config) or measure_path.find(self.filters):
-                sections = [self.config, self.filters, self.query, self.data_transforms]
-                for section in sections:
-                    measure_path.update(section, new_measure)
-                    table_path.update(section, new_table)
-                    table_measure_path.update(section, new)
-
-                self.layout['config'] = json.dumps(self.config)
-                self.layout['filters'] = json.dumps(self.filters)
-                self.layout['query'] = json.dumps(self.query)
-                self.layout['dataTransforms'] = json.dumps(self.data_transforms)
-
+                visual_options = {
+                    "config": self.config,
+                    "filters": self.filters,
+                    "query": self.query,
+                    "dataTransforms": self.data_transforms
+                }
+                for option, value in visual_options.items():
+                    measure_path.update(value, new_measure)
+                    table_path.update(value, new_table)
+                    table_measure_path.update(value, new)
+                    self.layout[option] = json.dumps(value)
                 self.updated = 1
 
                 print(f"Updated: {self.title}")
