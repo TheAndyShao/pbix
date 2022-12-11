@@ -13,7 +13,7 @@ class Report:
         self.filepath: str = filepath
         self.filename: str = os.path.basename(filepath)
         self.layout: str = self._read_layout(filepath)
-        self.layout_modified: str = self._read_modified_layout(filepath)
+        self.layout_full_json: str = self._read_full_json_layout(filepath)
         self.field_set: set[str] = self.get_all_fields()
         self.updated: int = 0
 
@@ -26,8 +26,8 @@ class Report:
                 '$.sections[*].visualContainers[*].config.singleVisual.projections[*].*.[*].queryRef'
             )
 
-        filter_set = set([match.value for match in filters_path.find(self.layout_modified)])
-        measure_set = set([match.value for match in measures_path.find(self.layout_modified)])
+        filter_set = set([match.value for match in filters_path.find(self.layout_full_json)])
+        measure_set = set([match.value for match in measures_path.find(self.layout_full_json)])
         return filter_set.union(measure_set)
 
     def find_instances(self, fields: list[str]) -> dict[str, bool]:
@@ -81,24 +81,35 @@ class Report:
         os.rename(temp_filepath, self.filepath)
 
     def _read_layout(self, filepath: str) -> str:
-        """Return a cleaned JSON object of the layout file within the PBIX file."""
+        """Return a JSON object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, 'r') as zip_file:
-            data = zip_file.read('Report/Layout').decode("utf-16")
-            layout = json.loads(data)
-            return layout
+            string = zip_file.read('Report/Layout').decode("utf-16")
+            return json.loads(string)
 
-    def _read_modified_layout(self, filepath: str) -> str:
-        """Return a cleaned JSON object of the layout file within the PBIX file."""
+    def _read_full_json_layout(self, filepath: str) -> str:
+        """Return a fully JSONified object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, 'r') as zip_file:
-            data = zip_file.read('Report/Layout').decode("utf-16")
-            string = data.replace(chr(0), "").replace(chr(28), "").replace(chr(29), "").replace(chr(25), "").replace("\"[", "[").replace("]\"", "]").replace("\"{", "{").replace("}\"", "}").replace("\\\\", "\\").replace("\\\"", "\"")
-            layout_modified = json.loads(string)
-            return layout_modified
+            string = zip_file.read('Report/Layout').decode("utf-16")
+            replacements = {
+                chr(0): "",
+                chr(28): "",
+                chr(29): "",
+                chr(25): "",
+                "\"[": "[",
+                "]\"": "]",
+                "\"{": "{",
+                "}\"": "}",
+                "\\\\": "\\",
+                "\\\"": "\""
+            }
+            for original, replacement in replacements.items():
+                string = string.replace(original, replacement)
+            return json.loads(string)
 
     def write_json_layout(self) -> None:
         """Write the cleaned JSON object to file."""
         with open('layout.json', 'w', encoding="utf-16") as outfile:
-            json.dump(self.layout_modified, outfile)
+            json.dump(self.layout_full_json, outfile)
 
     def _generic_visuals_generator(self) -> None:
         """Generator for iterating through all visuals in a file."""
