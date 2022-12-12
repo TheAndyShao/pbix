@@ -59,7 +59,7 @@ class Report:
         """Iterates through pages and genric visuals and updates slicers."""
         for i, j, visual in self._generic_visuals_generator():
             if visual.type == 'slicer':
-                slicer = Slicer(visual.layout)
+                slicer = Slicer(visual)
                 slicer.unselect_all_items()
                 self._update_visual_layout(i, j, slicer.layout)
                 self.updated += slicer.updated
@@ -123,6 +123,7 @@ class Report:
     def _update_visual_layout(self, page: int, visual: int, layout: str) -> None:
         """Updates visual layout with new definition."""
         self.layout['sections'][page]['visualContainers'][visual] = layout
+
 
 class GenericVisual:
     """A base class to represent a generic visual object."""
@@ -199,10 +200,10 @@ class DataVisual(GenericVisual):
 
 
 class NonDataVisual(GenericVisual):
-    """A calss representing visuals that don't depend on a data model."""
+    """A class representing visuals that don't depend on a data model."""
 
 
-class Slicer(GenericVisual):
+class Slicer(DataVisual):
     """A class representing a slicer."""
 
     def unselect_all_items(self) -> None:
