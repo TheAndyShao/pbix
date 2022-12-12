@@ -180,20 +180,19 @@ class DataVisual(GenericVisual):
                 f"$..@[?(@.*=='{old}')].[queryRef, Name, queryName]"
             )
 
-        if measure_path.find(self.config) or measure_path.find(self.filters):
-            visual_options = {
+        visual_options = {
                 "config": self.config,
                 "filters": self.filters,
                 "query": self.query,
                 "dataTransforms": self.data_transforms
             }
+        if any([measure_path.find(v) for v in visual_options.values()]):
             for option, value in visual_options.items():
                 measure_path.update(value, new_measure)
                 table_path.update(value, new_table)
                 table_measure_path.update(value, new)
                 self.layout[option] = json.dumps(value)
             self.updated = 1
-
             print(f"Updated: {self.title}")
 
 
