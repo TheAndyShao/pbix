@@ -167,36 +167,34 @@ class DataVisual(GenericVisual):
 
     def update_measures(self, old: str, new: str) -> None:
         """Searches for relevant keys for measures and updates their value pairs."""
-        if self.query: # Ignore shapes, textboxes etc.
+        old_table, old_measure = old.split('.')
+        new_table, new_measure = new.split('.')
 
-            old_table, old_measure = old.split('.')
-            new_table, new_measure = new.split('.')
+        measure_path = parse(
+                f"$..@[?(@.*=='{old_measure}')].[Property, displayName, Restatement]"
+            )
+        table_path = parse(
+                f"$..@[?(@.*=='{old_table}')].Entity"
+            )
+        table_measure_path = parse(
+                f"$..@[?(@.*=='{old}')].[queryRef, Name, queryName]"
+            )
 
-            measure_path = parse(
-                    f"$..@[?(@.*=='{old_measure}')].[Property, displayName, Restatement]"
-                )
-            table_path = parse(
-                    f"$..@[?(@.*=='{old_table}')].Entity"
-                )
-            table_measure_path = parse(
-                    f"$..@[?(@.*=='{old}')].[queryRef, Name, queryName]"
-                )
+        if measure_path.find(self.config) or measure_path.find(self.filters):
+            visual_options = {
+                "config": self.config,
+                "filters": self.filters,
+                "query": self.query,
+                "dataTransforms": self.data_transforms
+            }
+            for option, value in visual_options.items():
+                measure_path.update(value, new_measure)
+                table_path.update(value, new_table)
+                table_measure_path.update(value, new)
+                self.layout[option] = json.dumps(value)
+            self.updated = 1
 
-            if measure_path.find(self.config) or measure_path.find(self.filters):
-                visual_options = {
-                    "config": self.config,
-                    "filters": self.filters,
-                    "query": self.query,
-                    "dataTransforms": self.data_transforms
-                }
-                for option, value in visual_options.items():
-                    measure_path.update(value, new_measure)
-                    table_path.update(value, new_table)
-                    table_measure_path.update(value, new)
-                    self.layout[option] = json.dumps(value)
-                self.updated = 1
-
-                print(f"Updated: {self.title}")
+            print(f"Updated: {self.title}")
 
 
 class NonDataVisual(GenericVisual):
