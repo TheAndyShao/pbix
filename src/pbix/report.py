@@ -47,9 +47,11 @@ class Report:
         """Iterates through pages and visuals in a pbix and replaces specified measure/column."""
         print(f'Updating: {self.filename}')
         for i, j, visual in self._generic_visuals_generator():
-            visual.update_measures(old, new)
-            self._update_visual_layout(i, j, visual.layout)
-            self.updated += visual.updated
+            if visual.is_data_visual:
+                visual = DataVisual(visual)
+                visual.update_measures(old, new)
+                self._update_visual_layout(i, j, visual.layout)
+                self.updated += visual.updated
         if self.updated == 0:
             print('No measures to update')
 
@@ -128,12 +130,39 @@ class GenericVisual:
     def __init__(self, layout: str) -> None:
         self.layout: str = layout
         self.config: str = self._parse_visual_option('config')
+        self.title: str or None = None
+        self.type: str or None = self._return_visual_type()
+        non_data_visuals = ['image', 'textbox', 'shape', 'actionButton', None]
+        self.is_data_visual: bool = self.type not in non_data_visuals
+        self.updated: int = 0
+
+    def _return_visual_title(self) -> str or None:
+        """Return title of visual."""
+        title_path = parse("$..@.title[*].properties.text.expr.Literal.Value")
+        title = title_path.find(self.config)
+        return title[0].value if title else None
+
+    def _return_visual_type(self) -> str or None:
+        """Return type of visual."""
+        typ_path = parse("$.singleVisual.visualType")
+        typ = typ_path.find(self.config)
+        return typ[0].value if typ else None
+
+    def _parse_visual_option(self, visual_option: str) -> str or None:
+        """Returns a JSON object or None from visual option string"""
+        if visual_option in self.layout.keys():
+            return json.loads(self.layout[visual_option])
+        return None
+
+
+class DataVisual(GenericVisual):
+    """A class representing visuals that depend on a data model."""
+    def __init__(self, Visual: GenericVisual) -> None:
+        super().__init__(Visual.layout)
+        self.title: str = self._return_visual_title()
         self.filters: str = self._parse_visual_option('filters')
         self.query: str = self._parse_visual_option('query')
         self.data_transforms: str = self._parse_visual_option('dataTransforms')
-        self.title: str or None = self._return_visual_title()
-        self.type: str or None = self._return_visual_type()
-        self.updated: int = 0
 
     def update_measures(self, old: str, new: str) -> None:
         """Searches for relevant keys for measures and updates their value pairs."""
@@ -168,23 +197,10 @@ class GenericVisual:
 
                 print(f"Updated: {self.title}")
 
-    def _return_visual_title(self) -> str or None:
-        """Return title of visual."""
-        title_path = parse("$..@.title[*].properties.text.expr.Literal.Value")
-        title = title_path.find(self.config)
-        return title[0].value if title else None
 
-    def _return_visual_type(self) -> str or None:
-        """Return type of visual."""
-        typ_path = parse("$.singleVisual.visualType")
-        typ = typ_path.find(self.config)
-        return typ[0].value if typ else None
+class NonDataVisual(GenericVisual):
+    """A calss representing visuals that don't depend on a data model."""
 
-    def _parse_visual_option(self, visual_option: str) -> str or None:
-        """Returns a JSON object or None from visual option string"""
-        if visual_option in self.layout.keys():
-            return json.loads(self.layout[visual_option])
-        return None
 
 class Slicer(GenericVisual):
     """A class representing a slicer."""
