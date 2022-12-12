@@ -138,7 +138,7 @@ class GenericVisual:
 
     def _return_visual_title(self) -> str or None:
         """Return title of visual."""
-        title_path = parse("$..@.title[*].properties.text.expr.Literal.Value")
+        title_path = parse("$.singleVisual.vcObjects.title[0].properties.text.expr.Literal.Value")
         title = title_path.find(self.config)
         return title[0].value if title else None
 
