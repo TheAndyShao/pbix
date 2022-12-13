@@ -157,8 +157,12 @@ class GenericVisual:
 
 
 class DataVisual(GenericVisual):
-
     """A class representing visuals that depend on a data model."""
+
+    field_path = "$..@[?(@.*=='{field}')].[Property, displayName, Restatement]"
+    table_path = "$..@[?(@.*=='{table}')].Entity"
+    table_field_path = "$..@[?(@.*=='{table_field}')].[queryRef, Name, queryName]"
+
     def __init__(self, Visual: GenericVisual) -> None:
         super().__init__(Visual.layout)
         self.title: str = self._return_visual_title()
@@ -174,7 +178,7 @@ class DataVisual(GenericVisual):
 
     def find_field(self, table_field: str) -> bool:
         """Find if a field is used in the visual"""
-        table_measure_path = parse(f"$..@[?(@.*=='{table_field}')].[queryRef, Name, queryName]")
+        table_measure_path = parse(self.table_field_path.format(table_field=table_field))
         return any(table_measure_path.find(v) for v in self.visual_options.values())
 
     def update_measures(self, old: str, new: str) -> None:
@@ -182,21 +186,15 @@ class DataVisual(GenericVisual):
         old_table, old_measure = old.split('.')
         new_table, new_measure = new.split('.')
 
-        measure_path = parse(
-                f"$..@[?(@.*=='{old_measure}')].[Property, displayName, Restatement]"
-            )
-        table_path = parse(
-                f"$..@[?(@.*=='{old_table}')].Entity"
-            )
-        table_measure_path = parse(
-                f"$..@[?(@.*=='{old}')].[queryRef, Name, queryName]"
-            )
+        field_path = parse(self.field_path.format(field=old_measure))
+        table_path = parse(self.table_path.format(table=old_table))
+        table_field_path = parse(self.table_field_path.format(table_field=old))
 
         if self.find_field(old):
             for option, value in self.visual_options.items():
-                measure_path.update(value, new_measure)
+                field_path.update(value, new_measure)
                 table_path.update(value, new_table)
-                table_measure_path.update(value, new)
+                table_field_path.update(value, new)
                 self.layout[option] = json.dumps(value)
             self.updated = 1
             print(f"Updated: {self.title}")
