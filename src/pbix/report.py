@@ -157,6 +157,7 @@ class GenericVisual:
 
 
 class DataVisual(GenericVisual):
+
     """A class representing visuals that depend on a data model."""
     def __init__(self, Visual: GenericVisual) -> None:
         super().__init__(Visual.layout)
@@ -164,6 +165,17 @@ class DataVisual(GenericVisual):
         self.filters: str = self._parse_visual_option('filters')
         self.query: str = self._parse_visual_option('query')
         self.data_transforms: str = self._parse_visual_option('dataTransforms')
+        self.visual_options = {
+                "config": self.config,
+                "filters": self.filters,
+                "query": self.query,
+                "dataTransforms": self.data_transforms
+            }
+
+    def find_field(self, table_field: str) -> bool:
+        """Find if a field is used in the visual"""
+        table_measure_path = parse(f"$..@[?(@.*=='{table_field}')].[queryRef, Name, queryName]")
+        return any(table_measure_path.find(v) for v in self.visual_options.values())
 
     def update_measures(self, old: str, new: str) -> None:
         """Searches for relevant keys for measures and updates their value pairs."""
@@ -180,14 +192,8 @@ class DataVisual(GenericVisual):
                 f"$..@[?(@.*=='{old}')].[queryRef, Name, queryName]"
             )
 
-        visual_options = {
-                "config": self.config,
-                "filters": self.filters,
-                "query": self.query,
-                "dataTransforms": self.data_transforms
-            }
-        if any([measure_path.find(v) for v in visual_options.values()]):
-            for option, value in visual_options.items():
+        if self.find_field(old):
+            for option, value in self.visual_options.items():
                 measure_path.update(value, new_measure)
                 table_path.update(value, new_table)
                 table_measure_path.update(value, new)
