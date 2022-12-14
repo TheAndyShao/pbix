@@ -187,13 +187,13 @@ class DataVisual(GenericVisual):
         new_table, new_measure = new.split('.')
 
         field_path = parse(self.field_path.format(field=old_measure))
-        table_path = parse(self.table_path.format(table=old_table))
+        #table_path = parse(self.table_path.format(table=old_table))
         table_field_path = parse(self.table_field_path.format(table_field=old))
 
         if self.find_field(old):
             for option, value in self.visual_options.items():
                 field_path.update(value, new_measure)
-                table_path.update(value, new_table)
+                #table_path.update(value, new_table)
                 table_field_path.update(value, new)
                 self.layout[option] = json.dumps(value)
             self.updated = 1
