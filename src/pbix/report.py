@@ -19,15 +19,15 @@ class Report:
 
     def get_all_fields(self) -> None:
         """Get a list of used fields in the pbix file."""
-        filters_path = parse(
+        filter_path = parse(
                 '$.sections[*].visualContainers[*].filters[*].expression.Measure.Property'
             )
-        measures_path = parse(
+        field_path = parse(
                 '$.sections[*].visualContainers[*].config.singleVisual.projections[*].*.[*].queryRef'
             )
 
-        filter_set = set([match.value for match in filters_path.find(self.layout_full_json)])
-        measure_set = set([match.value for match in measures_path.find(self.layout_full_json)])
+        filter_set = set([match.value for match in filter_path.find(self.layout_full_json)])
+        measure_set = set([match.value for match in field_path.find(self.layout_full_json)])
         return filter_set.union(measure_set)
 
     def find_instances(self, fields: list[str]) -> dict[str, bool]:
@@ -43,17 +43,17 @@ class Report:
                 matches[field] = True
         return matches
 
-    def update_measures(self, old: str, new: str) -> None:
+    def update_fields(self, old: str, new: str) -> None:
         """Iterates through pages and visuals in a pbix and replaces specified measure/column."""
         print(f'Updating: {self.filename}')
         for i, j, visual in self._generic_visuals_generator():
             if visual.is_data_visual:
                 visual = DataVisual(visual)
-                visual.update_measures(old, new)
+                visual.update_fields(old, new)
                 self._update_visual_layout(i, j, visual.layout)
                 self.updated += visual.updated
         if self.updated == 0:
-            print('No measures to update')
+            print('No fields to update')
 
     def update_slicers(self) -> None:
         """Iterates through pages and genric visuals and updates slicers."""
@@ -181,8 +181,8 @@ class DataVisual(GenericVisual):
         table_measure_path = parse(self.table_field_path.format(table_field=table_field))
         return any(table_measure_path.find(v) for v in self.visual_options.values())
 
-    def update_measures(self, old: str, new: str) -> None:
-        """Searches for relevant keys for measures and updates their value pairs."""
+    def update_fields(self, old: str, new: str) -> None:
+        """Searches for relevant keys for fields and updates their value pairs."""
         old_table, old_measure = old.split('.')
         new_table, new_measure = new.split('.')
 
