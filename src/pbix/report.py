@@ -19,15 +19,15 @@ class Report:
 
     def get_all_fields(self) -> None:
         """Get a list of used fields in the pbix file."""
-        filters_path = parse(
+        filter_path = parse(
                 '$.sections[*].visualContainers[*].filters[*].expression.Measure.Property'
             )
-        measures_path = parse(
+        field_path = parse(
                 '$.sections[*].visualContainers[*].config.singleVisual.projections[*].*.[*].queryRef'
             )
 
-        filter_set = set([match.value for match in filters_path.find(self.layout_full_json)])
-        measure_set = set([match.value for match in measures_path.find(self.layout_full_json)])
+        filter_set = set([match.value for match in filter_path.find(self.layout_full_json)])
+        measure_set = set([match.value for match in field_path.find(self.layout_full_json)])
         return filter_set.union(measure_set)
 
     def find_instances(self, fields: list[str]) -> dict[str, bool]:
@@ -43,21 +43,23 @@ class Report:
                 matches[field] = True
         return matches
 
-    def update_measures(self, old: str, new: str) -> None:
+    def update_fields(self, old: str, new: str) -> None:
         """Iterates through pages and visuals in a pbix and replaces specified measure/column."""
         print(f'Updating: {self.filename}')
         for i, j, visual in self._generic_visuals_generator():
-            visual.update_measures(old, new)
-            self._update_visual_layout(i, j, visual.layout)
-            self.updated += visual.updated
+            if visual.is_data_visual:
+                visual = DataVisual(visual)
+                visual.update_fields(old, new)
+                self._update_visual_layout(i, j, visual.layout)
+                self.updated += visual.updated
         if self.updated == 0:
-            print('No measures to update')
+            print('No fields to update')
 
     def update_slicers(self) -> None:
         """Iterates through pages and genric visuals and updates slicers."""
         for i, j, visual in self._generic_visuals_generator():
             if visual.type == 'slicer':
-                slicer = Slicer(visual.layout)
+                slicer = Slicer(visual)
                 slicer.unselect_all_items()
                 self._update_visual_layout(i, j, slicer.layout)
                 self.updated += slicer.updated
@@ -122,55 +124,22 @@ class Report:
         """Updates visual layout with new definition."""
         self.layout['sections'][page]['visualContainers'][visual] = layout
 
+
 class GenericVisual:
     """A base class to represent a generic visual object."""
 
     def __init__(self, layout: str) -> None:
         self.layout: str = layout
         self.config: str = self._parse_visual_option('config')
-        self.filters: str = self._parse_visual_option('filters')
-        self.query: str = self._parse_visual_option('query')
-        self.data_transforms: str = self._parse_visual_option('dataTransforms')
-        self.title: str or None = self._return_visual_title()
+        self.title: str or None = None
         self.type: str or None = self._return_visual_type()
+        non_data_visuals = ['image', 'textbox', 'shape', 'actionButton', None]
+        self.is_data_visual: bool = self.type not in non_data_visuals
         self.updated: int = 0
-
-    def update_measures(self, old: str, new: str) -> None:
-        """Searches for relevant keys for measures and updates their value pairs."""
-        if self.query: # Ignore shapes, textboxes etc.
-
-            old_table, old_measure = old.split('.')
-            new_table, new_measure = new.split('.')
-
-            measure_path = parse(
-                    f"$..@[?(@.*=='{old_measure}')].[Property, displayName, Restatement]"
-                )
-            table_path = parse(
-                    f"$..@[?(@.*=='{old_table}')].Entity"
-                )
-            table_measure_path = parse(
-                    f"$..@[?(@.*=='{old}')].[queryRef, Name, queryName]"
-                )
-
-            if measure_path.find(self.config) or measure_path.find(self.filters):
-                visual_options = {
-                    "config": self.config,
-                    "filters": self.filters,
-                    "query": self.query,
-                    "dataTransforms": self.data_transforms
-                }
-                for option, value in visual_options.items():
-                    measure_path.update(value, new_measure)
-                    table_path.update(value, new_table)
-                    table_measure_path.update(value, new)
-                    self.layout[option] = json.dumps(value)
-                self.updated = 1
-
-                print(f"Updated: {self.title}")
 
     def _return_visual_title(self) -> str or None:
         """Return title of visual."""
-        title_path = parse("$..@.title[*].properties.text.expr.Literal.Value")
+        title_path = parse("$.singleVisual.vcObjects.title[0].properties.text.expr.Literal.Value")
         title = title_path.find(self.config)
         return title[0].value if title else None
 
@@ -186,7 +155,52 @@ class GenericVisual:
             return json.loads(self.layout[visual_option])
         return None
 
-class Slicer(GenericVisual):
+
+class DataVisual(GenericVisual):
+    """A class representing visuals that depend on a data model."""
+
+    field_path = "$..@[?(@.*=='{field}')].[Property, displayName, Restatement]"
+    table_path = "$..@[?(@.*=='{table}')].Entity"
+    table_field_path = "$..@[?(@.*=='{table_field}')].[queryRef, Name, queryName]"
+
+    def __init__(self, Visual: GenericVisual) -> None:
+        super().__init__(Visual.layout)
+        self.title: str = self._return_visual_title()
+        self.filters: str = self._parse_visual_option('filters')
+        self.query: str = self._parse_visual_option('query')
+        self.data_transforms: str = self._parse_visual_option('dataTransforms')
+        self.visual_options = {
+                "config": self.config,
+                "filters": self.filters,
+                "query": self.query,
+                "dataTransforms": self.data_transforms
+            }
+
+    def find_field(self, table_field: str) -> bool:
+        """Find if a field is used in the visual"""
+        table_measure_path = parse(self.table_field_path.format(table_field=table_field))
+        return any(table_measure_path.find(v) for v in self.visual_options.values())
+
+    def update_fields(self, old: str, new: str) -> None:
+        """Searches for relevant keys for fields and updates their value pairs."""
+        old_table, old_measure = old.split('.')
+        new_table, new_measure = new.split('.')
+
+        field_path = parse(self.field_path.format(field=old_measure))
+        table_path = parse(self.table_path.format(table=old_table))
+        table_field_path = parse(self.table_field_path.format(table_field=old))
+
+        if self.find_field(old):
+            for option, value in self.visual_options.items():
+                field_path.update(value, new_measure)
+                table_path.update(value, new_table)
+                table_field_path.update(value, new)
+                self.layout[option] = json.dumps(value)
+            self.updated = 1
+            print(f"Updated: {self.title}")
+
+
+class Slicer(DataVisual):
     """A class representing a slicer."""
 
     def unselect_all_items(self) -> None:
