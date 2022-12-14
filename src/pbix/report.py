@@ -200,10 +200,6 @@ class DataVisual(GenericVisual):
             print(f"Updated: {self.title}")
 
 
-class NonDataVisual(GenericVisual):
-    """A class representing visuals that don't depend on a data model."""
-
-
 class Slicer(DataVisual):
     """A class representing a slicer."""
 
