@@ -280,19 +280,23 @@ class VisualConfig:
 
 
 class VisualQuery:
+    """A class representing the query settings of a visual"""
 
     def __init__(self, query) -> None:
         self.query = query
 
     def update_fields(self, table_field_old, table_field_new, field_new):
+        """Replace field in all relevant query settings."""
         self._update_commands_fields(table_field_old, field_new)
         self._update_commands_table_fields(table_field_old, table_field_new)
 
     def _update_commands_fields(self, table_field_old, field_new):
+        """Update field in select command."""
         path = parse(f"$.Commands.[*].SemanticQueryDataShapeCommand.Query.Select[?(@.Name=='{table_field_old}')].*.Property")
         path.update(self.query, field_new)
 
     def _update_commands_table_fields(self, table_field_old, table_field_new):
+        """Update table.field in select command."""
         path = parse(f"$.Commands.[*].SemanticQueryDataShapeCommand.Query.Select[?(@.Name=='{table_field_old}')].Name")
         path.update(self.query, table_field_new)
 
@@ -324,14 +328,17 @@ class VisualDataTransforms:
         path.update(self.data_transforms, table_new)
 
     def _update_datatransforms_selects_field(self, table_field_old, field):
+        """Update field in selects."""
         path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.*.Property")
         path.update(self.data_transforms, field)
 
     def _update_datatransforms_selects_table_field(self, table_field_old, table_field_new):
+        """Update table.field in selects."""
         path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].queryName")
         path.update(self.data_transforms, table_field_new)
 
     def _update_query_meta_data(self, table_field_old, table_field_new):
+        """Update table.field in query metadata."""
         path = parse(f"$.queryMetadata.Select[?(@.Name=='{table_field_old}')].Name")
         path.update(self.data_transforms, table_field_new)
 
