@@ -168,12 +168,13 @@ class DataVisual(GenericVisual):
         self.title: str = self._return_visual_title()
         self.filters: str = self._parse_visual_option('filters')
         self.query: str = self._parse_visual_option('query')
-        self.data_transforms: str = self._parse_visual_option('dataTransforms')
+        self.data_transforms: str or None =  VisualDataTransforms(self._parse_visual_option('dataTransforms'))
+        self.config = VisualConfig(self.config)
         self.visual_options = {
-                "config": self.config,
+                "config": self.config.config,
                 "filters": self.filters,
                 "query": self.query,
-                "dataTransforms": self.data_transforms
+                "dataTransforms": self.data_transforms.data_transforms
             }
 
     def find_field(self, table_field: str) -> bool:
@@ -191,6 +192,14 @@ class DataVisual(GenericVisual):
         table_field_path = parse(self.table_field_path.format(table_field=old))
 
         if self.find_field(old):
+            if not self.config._find_prototypequery_table(new_table):
+                name = self.config._generate_prototypequery_table_name()
+                self.config._add_prototypequery_table(new_table, name)
+                self.config._update_prototypequery_table_name(old, name)
+                self.config._update_column_properties(old, new)
+                self.data_transforms._update_datatransforms_metadata(old, new)
+                self.data_transforms._update_datatransforms_selects(old, new_table)
+                self.config._update_singlevisual(old, new)
             for option, value in self.visual_options.items():
                 field_path.update(value, new_measure)
                 #table_path.update(value, new_table)
@@ -198,6 +207,72 @@ class DataVisual(GenericVisual):
                 self.layout[option] = json.dumps(value)
             self.updated = 1
             print(f"Updated: {self.title}")
+
+
+class VisualConfig:
+    """A class representing the config settings of a visual."""
+
+    def __init__(self, config: str) -> None:
+        self.config = config
+        self.single_visual = self.config['singleVisual']
+        self.prototypeQuery = self.single_visual['prototypeQuery']
+
+    def _find_prototypequery_table(self, table) -> str:
+        """Finds if a table is present as a source in the prototypequery object."""
+        table_path = parse(f"$.From[?(@.Entity=='{table}')]")
+        table = table_path.find(self.prototypeQuery)
+        return table
+
+    def _return_prototypequery_tables(self):
+        """Returns all the currently used table name aliases in the prototypequery."""
+        table_path = parse(f"$.From.[*].Name")
+        tables = table_path.find(self.prototypeQuery)
+        return [name.value for name in tables]
+
+    def _generate_prototypequery_table_name(self):
+        """Returns a new table name alias for additions to the prototypequery."""
+        names = self._return_prototypequery_tables()
+        names = [int(name.replace('s', '0')) for name in names]
+        return 's' + str(max(names) + 1)
+
+    def _add_prototypequery_table(self, table, name):
+        """Adds a new table to the prototypequery."""
+        table = {"Name": None, "Entity": table, "Type": 0}
+        table['Name'] = name
+        self.prototypeQuery['From'].append(table)
+
+    def _update_prototypequery_table_name(self, table_field, name):
+        """Updates prototypequery table name alias."""
+        path = parse(f"$.Select[?(@.Name=='{table_field}')].Measure.Expression.SourceRef.Source")
+        path.update(self.prototypeQuery, name)
+
+    def _update_column_properties(self, table_field_old, table_field_new):
+        """Update column properties if necessary."""
+        column_properties = self.single_visual['columnProperties']
+        if table_field_old in column_properties:
+            column_properties[table_field_new] = column_properties.pop(table_field_old)
+
+    def _update_singlevisual(self, table_field_old, table_field_new):
+        """Update single visual."""
+        path = parse(f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata")
+        path.update(self.single_visual, table_field_new)
+
+
+class VisualDataTransforms:
+    """A class representing the datatransforms settings of a Visual."""
+
+    def __init__(self, data_transforms) -> None:
+        self.data_transforms = data_transforms
+
+    def _update_datatransforms_metadata(self, table_field_old, table_field_new):
+        """Update table references in metadata."""
+        path = parse(f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata")
+        path.update(self.data_transforms, table_field_new)
+
+    def _update_datatransforms_selects(self, table_field_old, table_new):
+        """Update table references in selects."""
+        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.Measure.Expression.SourceRef.Entity")
+        path.update(self.data_transforms, table_new)
 
 
 class Slicer(DataVisual):
