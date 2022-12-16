@@ -194,8 +194,7 @@ class DataVisual(GenericVisual):
         if self.find_field(old):
             if not self.config._find_prototypequery_table(new_table):
                 self.config.update_fields(old, new, new_table)
-                self.data_transforms._update_datatransforms_metadata(old, new)
-                self.data_transforms._update_datatransforms_selects(old, new_table)
+                self.data_transforms.update_fields(old, new, new_table)
             for option, value in self.visual_options.items():
                 field_path.update(value, new_measure)
                 #table_path.update(value, new_table)
@@ -267,6 +266,11 @@ class VisualDataTransforms:
 
     def __init__(self, data_transforms) -> None:
         self.data_transforms = data_transforms
+
+    def update_fields(self, table_field_old, table_field_new, table_new):
+        """Replace fields in all relevant datatransforms settings."""
+        self._update_datatransforms_metadata(table_field_old, table_field_new)
+        self._update_datatransforms_selects(table_field_old, table_new)
 
     def _update_datatransforms_metadata(self, table_field_old, table_field_new):
         """Update table references in metadata."""
