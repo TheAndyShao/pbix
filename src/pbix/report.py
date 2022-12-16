@@ -192,10 +192,10 @@ class DataVisual(GenericVisual):
         if self.find_field(old):
             if not self.config._find_prototypequery_table(new_table):
                 self.config.update_fields(old, new, new_table)
-                self.data_transforms.update_fields(old, new, new_table)
+                self.data_transforms.update_fields(old, new, new_table, new_measure)
             for option, value in self.visual_options.items():
-                field_path.update(value, new_measure)
-                table_field_path.update(value, new)
+                #field_path.update(value, new_measure)
+                #table_field_path.update(value, new)
                 self.layout[option] = json.dumps(value)
             self.updated = 1
             print(f"Updated: {self.title}")
@@ -216,6 +216,11 @@ class VisualConfig:
         self._update_prototypequery_table_name(table_field_old, name)
         self._update_column_properties(table_field_old, table_field_new)
         self._update_singlevisual(table_field_old, table_field_new)
+        self._update_prototypequery_fields(table_field_old, table_field_new)
+
+        # Table field measures act like ids so update these last
+        self._update_prototypequery_table_fields(table_field_old, table_field_new)
+        self._update_projections(table_field_old, table_field_new)
 
     def _find_prototypequery_table(self, table) -> str:
         """Finds if a table is present as a source in the prototypequery object."""
@@ -246,6 +251,21 @@ class VisualConfig:
         path = parse(f"$.Select[?(@.Name=='{table_field}')].Measure.Expression.SourceRef.Source")
         path.update(self.prototypeQuery, name)
 
+    def _update_prototypequery_fields(self, table_field, field):
+        """Updating prototypequery fields."""
+        path = parse(f"$.Select[?(@.Name=='{table_field}')].Measure.Property")
+        path.update(self.prototypeQuery, field)
+
+    def _update_prototypequery_table_fields(self, table_field_old, table_field_new):
+        """Updating prototypequery table fields."""
+        path = parse(f"$.Select[?(@.Name=='{table_field_old}')].Name")
+        path.update(self.prototypeQuery, table_field_new)
+
+    def _update_projections(self, table_field_old, table_field_new):
+        """Updating projections."""
+        path = parse(f"$.projections.Values[?(@.queryRef=='{table_field_old}')]")
+        path.update(self.single_visual, table_field_new)
+
     def _update_column_properties(self, table_field_old, table_field_new):
         """Update column properties if necessary."""
         column_properties = self.single_visual['columnProperties']
@@ -264,10 +284,15 @@ class VisualDataTransforms:
     def __init__(self, data_transforms) -> None:
         self.data_transforms = data_transforms
 
-    def update_fields(self, table_field_old, table_field_new, table_new):
+    def update_fields(self, table_field_old, table_field_new, table_new, field_new):
         """Replace fields in all relevant datatransforms settings."""
         self._update_datatransforms_metadata(table_field_old, table_field_new)
         self._update_datatransforms_selects(table_field_old, table_new)
+        self._update_datatransforms_selects_field(table_field_old, field_new)
+
+        # Table field measures act like ids so update these last
+        self._update_datatransforms_selects_table_field(table_field_old, table_field_new)
+        self._update_query_meta_data(table_field_old, table_field_new)
 
     def _update_datatransforms_metadata(self, table_field_old, table_field_new):
         """Update table references in metadata."""
@@ -278,6 +303,18 @@ class VisualDataTransforms:
         """Update table references in selects."""
         path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.Measure.Expression.SourceRef.Entity")
         path.update(self.data_transforms, table_new)
+
+    def _update_datatransforms_selects_field(self, table_field_old, field):
+        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.*.Property")
+        path.update(self.data_transforms, field)
+
+    def _update_datatransforms_selects_table_field(self, table_field_old, table_field_new):
+        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].queryName")
+        path.update(self.data_transforms, table_field_new)
+
+    def _update_query_meta_data(self, table_field_old, table_field_new):
+        path = parse(f"$.queryMetadata.Select[?(@.Name=='{table_field_old}')].Name")
+        path.update(self.data_transforms, table_field_new)
 
 
 class Slicer(DataVisual):
