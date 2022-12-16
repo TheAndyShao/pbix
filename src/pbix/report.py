@@ -166,13 +166,13 @@ class DataVisual(GenericVisual):
         super().__init__(Visual.layout)
         self.title: str = self._return_visual_title()
         self.filters: str = self._parse_visual_option('filters')
-        self.query: str = self._parse_visual_option('query')
+        self.query: str or None =  VisualQuery(self._parse_visual_option('query'))
         self.data_transforms: str or None =  VisualDataTransforms(self._parse_visual_option('dataTransforms'))
         self.config = VisualConfig(self.config)
         self.visual_options = {
                 "config": self.config.config,
                 "filters": self.filters,
-                "query": self.query,
+                "query": self.query.query,
                 "dataTransforms": self.data_transforms.data_transforms
             }
 
@@ -191,8 +191,9 @@ class DataVisual(GenericVisual):
 
         if self.find_field(old):
             if not self.config._find_prototypequery_table(new_table):
-                self.config.update_fields(old, new, new_table)
+                self.config.update_fields(old, new, new_table, new_measure)
                 self.data_transforms.update_fields(old, new, new_table, new_measure)
+                self.query.update_fields(old, new, new_measure)
             for option, value in self.visual_options.items():
                 #field_path.update(value, new_measure)
                 #table_field_path.update(value, new)
@@ -209,14 +210,14 @@ class VisualConfig:
         self.single_visual = self.config['singleVisual']
         self.prototypeQuery = self.single_visual['prototypeQuery']
 
-    def update_fields(self, table_field_old, table_field_new, table_new):
+    def update_fields(self, table_field_old, table_field_new, table_new, field_new):
         """Replace fields in all relevant config settings."""
         name = self._generate_prototypequery_table_name()
         self._add_prototypequery_table(table_new, name)
         self._update_prototypequery_table_name(table_field_old, name)
         self._update_column_properties(table_field_old, table_field_new)
         self._update_singlevisual(table_field_old, table_field_new)
-        self._update_prototypequery_fields(table_field_old, table_field_new)
+        self._update_prototypequery_fields(table_field_old, field_new)
 
         # Table field measures act like ids so update these last
         self._update_prototypequery_table_fields(table_field_old, table_field_new)
@@ -263,7 +264,7 @@ class VisualConfig:
 
     def _update_projections(self, table_field_old, table_field_new):
         """Updating projections."""
-        path = parse(f"$.projections.Values[?(@.queryRef=='{table_field_old}')]")
+        path = parse(f"$.projections.Values[?(@.queryRef=='{table_field_old}')].queryRef")
         path.update(self.single_visual, table_field_new)
 
     def _update_column_properties(self, table_field_old, table_field_new):
@@ -276,6 +277,24 @@ class VisualConfig:
         """Update single visual."""
         path = parse(f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata")
         path.update(self.single_visual, table_field_new)
+
+
+class VisualQuery:
+
+    def __init__(self, query) -> None:
+        self.query = query
+
+    def update_fields(self, table_field_old, table_field_new, field_new):
+        self._update_commands_fields(table_field_old, field_new)
+        self._update_commands_table_fields(table_field_old, table_field_new)
+
+    def _update_commands_fields(self, table_field_old, field_new):
+        path = parse(f"$.Commands.[*].SemanticQueryDataShapeCommand.Query.Select[?(@.Name=='{table_field_old}')].*.Property")
+        path.update(self.query, field_new)
+
+    def _update_commands_table_fields(self, table_field_old, table_field_new):
+        path = parse(f"$.Commands.[*].SemanticQueryDataShapeCommand.Query.Select[?(@.Name=='{table_field_old}')].Name")
+        path.update(self.query, table_field_new)
 
 
 class VisualDataTransforms:
