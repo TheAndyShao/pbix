@@ -322,18 +322,6 @@ class VisualQuery:
         for command in self.commands:
             query = GenericVisualQuery(command['SemanticQueryDataShapeCommand']['Query'])
             query.update_fields(table_field_old, table_field_new, table_new, field_new)
-        self._update_commands_fields(table_field_old, field_new)
-        self._update_commands_table_fields(table_field_old, table_field_new)
-
-    def _update_commands_fields(self, table_field_old, field_new):
-        """Update field in select command."""
-        path = parse(f"$.Commands.[*].SemanticQueryDataShapeCommand.Query.Select[?(@.Name=='{table_field_old}')].*.Property")
-        path.update(self.visual_query, field_new)
-
-    def _update_commands_table_fields(self, table_field_old, table_field_new):
-        """Update table.field in select command."""
-        path = parse(f"$.Commands.[*].SemanticQueryDataShapeCommand.Query.Select[?(@.Name=='{table_field_old}')].Name")
-        path.update(self.visual_query, table_field_new)
 
 
 class VisualDataTransforms:
