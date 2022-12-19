@@ -172,7 +172,7 @@ class DataVisual(GenericVisual):
         self.visual_options = {
                 "config": self.config.config,
                 "filters": self.filters,
-                "query": self.query.query,
+                "query": self.query.visual_query,
                 "dataTransforms": self.data_transforms.data_transforms
             }
 
@@ -295,7 +295,6 @@ class GenericVisualQuery:
         path.update(self.select, table_field_new)
 
     def _return_select_tables(self, table_field_old):
-        #path = parse(f"$.Select.[*].*.Expression.SourceRef.Source")
         path = parse(f"$[?(@.Name!='{table_field_old}')].*.Expression.SourceRef.Source")
         nodes = path.find(self.select)
         return [node.value for node in nodes]
@@ -309,12 +308,11 @@ class GenericVisualQuery:
                 self.frm.remove(table)
 
 
-
 class VisualQuery:
     """A class representing the query settings of a visual"""
 
-    def __init__(self, query) -> None:
-        self.query = query
+    def __init__(self, visual_query) -> None:
+        self.visual_query = visual_query
 
     def update_fields(self, table_field_old, table_field_new, field_new):
         """Replace field in all relevant query settings."""
@@ -324,12 +322,12 @@ class VisualQuery:
     def _update_commands_fields(self, table_field_old, field_new):
         """Update field in select command."""
         path = parse(f"$.Commands.[*].SemanticQueryDataShapeCommand.Query.Select[?(@.Name=='{table_field_old}')].*.Property")
-        path.update(self.query, field_new)
+        path.update(self.visual_query, field_new)
 
     def _update_commands_table_fields(self, table_field_old, table_field_new):
         """Update table.field in select command."""
         path = parse(f"$.Commands.[*].SemanticQueryDataShapeCommand.Query.Select[?(@.Name=='{table_field_old}')].Name")
-        path.update(self.query, table_field_new)
+        path.update(self.visual_query, table_field_new)
 
 
 class VisualDataTransforms:
