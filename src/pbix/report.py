@@ -239,6 +239,9 @@ class VisualConfig:
 class GenericVisualQuery:
     def __init__(self, prototypequery) -> None:
         self.prototypeQuery = prototypequery
+        self.frm = self.get('From')
+        self.select = self.get('Select')
+        self.where = self.get('Where')
 
     def update_fields(self, table_field_old, table_field_new, table_new, field_new):
         self._cleanup_tables(table_field_old)
