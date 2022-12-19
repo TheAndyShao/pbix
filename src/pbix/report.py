@@ -191,10 +191,9 @@ class DataVisual(GenericVisual):
         table_field_path = parse(self.table_field_path.format(table_field=old))
 
         if self.find_field(old):
-            if not self.config.prototypequery._find_from_table_alias(new_table):
-                self.config.update_fields(old, new, new_table, new_measure)
-                self.data_transforms.update_fields(old, new, new_table, new_measure)
-                self.query.update_fields(old, new, new_table, new_measure)
+            self.config.update_fields(old, new, new_table, new_measure)
+            self.data_transforms.update_fields(old, new, new_table, new_measure)
+            self.query.update_fields(old, new, new_table, new_measure)
             for option, value in self.visual_options.items():
                 #field_path.update(value, new_measure)
                 #table_field_path.update(value, new)
