@@ -208,7 +208,7 @@ class VisualConfig:
     def __init__(self, config: str) -> None:
         self.config = config
         self.single_visual = self.config['singleVisual']
-        self.prototypequery = VisualPrototypeQuery(self.single_visual['prototypeQuery'])
+        self.prototypequery = GenericVisualQuery(self.single_visual['prototypeQuery'])
 
     def update_fields(self, table_field_old, table_field_new, table_new, field_new):
         """Replace fields in all relevant config settings."""
@@ -236,7 +236,7 @@ class VisualConfig:
         path.update(self.single_visual, table_field_new)
 
 
-class VisualPrototypeQuery:
+class GenericVisualQuery:
     def __init__(self, prototypequery) -> None:
         self.prototypeQuery = prototypequery
 
@@ -244,17 +244,6 @@ class VisualPrototypeQuery:
         self._cleanup_tables(table_field_old)
         name = self._generate_table_alias()
         if not self._find_from_table_alias(table_new):
-
-            """
-            Options:
-            - New and old table are still required
-                - Just need to change the fields and aliases in the select statement
-            - Old table is not required
-                - Need to cleanup the old table
-            1. Check if node needs to be removed and remove
-            2. Get table alias for new table, if
-            3. Add node
-            """
             self._add_prototypequery_table(table_new, name)
         self._update_select_table_alias(table_field_old, name)
         self._update_select_fields(table_field_old, field_new)
