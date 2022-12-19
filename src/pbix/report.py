@@ -4,6 +4,7 @@ import zipfile as zf
 import json
 import os
 from jsonpath_ng.ext import parse # ext implements filter functionality to parse
+import re
 
 
 class Report:
@@ -193,7 +194,7 @@ class DataVisual(GenericVisual):
             if not self.config.prototypequery._find_from_table_alias(new_table):
                 self.config.update_fields(old, new, new_table, new_measure)
                 self.data_transforms.update_fields(old, new, new_table, new_measure)
-                self.query.update_fields(old, new, new_measure)
+                self.query.update_fields(old, new, new_table, new_measure)
             for option, value in self.visual_options.items():
                 #field_path.update(value, new_measure)
                 #table_field_path.update(value, new)
@@ -268,8 +269,9 @@ class GenericVisualQuery:
 
     def _generate_table_alias(self):
         """Returns a new table name alias for additions to the prototypequery."""
+        regex = re.compile('[^0-9]')
         names = self._return_from_tables()
-        names = [int(name.replace('s', '0')) for name in names] # Seems sus
+        names = [int(regex.sub('0', name)) for name in names]
         if names:
             return 's' + str(max(names) + 1)
         return 's'
@@ -313,9 +315,13 @@ class VisualQuery:
 
     def __init__(self, visual_query) -> None:
         self.visual_query = visual_query
+        self.commands = self.visual_query.get('Commands')
 
-    def update_fields(self, table_field_old, table_field_new, field_new):
+    def update_fields(self, table_field_old, table_field_new, table_new, field_new):
         """Replace field in all relevant query settings."""
+        for command in self.commands:
+            query = GenericVisualQuery(command['SemanticQueryDataShapeCommand']['Query'])
+            query.update_fields(table_field_old, table_field_new, table_new, field_new)
         self._update_commands_fields(table_field_old, field_new)
         self._update_commands_table_fields(table_field_old, table_field_new)
 
