@@ -256,14 +256,14 @@ class GenericVisualQuery:
 
     def _find_from_table_alias(self, table) -> str:
         """Finds if a table is present as a source in the prototypequery object."""
-        table_path = parse(f"$.From[?(@.Entity=='{table}')].Name")
-        table = table_path.find(self.query)
+        table_path = parse(f"$[?(@.Entity=='{table}')].Name")
+        table = table_path.find(self.frm)
         return table
 
     def _return_from_tables(self):
         """Returns all the currently used table name aliases in the prototypequery."""
-        table_path = parse(f"$.From.[*].Name")
-        tables = table_path.find(self.query)
+        table_path = parse(f"$.[*].Name")
+        tables = table_path.find(self.frm)
         return [name.value for name in tables]
 
     def _generate_table_alias(self):
@@ -277,36 +277,36 @@ class GenericVisualQuery:
     def _add_prototypequery_table(self, table, name):
         """Adds a new table to the prototypequery."""
         table = {"Name": name, "Entity": table, "Type": 0}
-        self.query['From'].append(table)
+        self.frm.append(table)
 
     def _update_select_fields(self, table_field, field):
         """Updating prototypequery fields."""
-        path = parse(f"$.Select[?(@.Name=='{table_field}')].Measure.Property")
-        path.update(self.query, field)
+        path = parse(f"$[?(@.Name=='{table_field}')].Measure.Property")
+        path.update(self.select, field)
 
     def _update_select_table_alias(self, table_field, name):
         """Updates prototypequery table name alias."""
-        path = parse(f"$.Select[?(@.Name=='{table_field}')].Measure.Expression.SourceRef.Source")
-        path.update(self.query, name)
+        path = parse(f"$[?(@.Name=='{table_field}')].Measure.Expression.SourceRef.Source")
+        path.update(self.select, name)
 
     def _update_select_table_fields(self, table_field_old, table_field_new):
         """Updating prototypequery table fields."""
-        path = parse(f"$.Select[?(@.Name=='{table_field_old}')].Name")
-        path.update(self.query, table_field_new)
+        path = parse(f"$[?(@.Name=='{table_field_old}')].Name")
+        path.update(self.select, table_field_new)
 
     def _return_select_tables(self, table_field_old):
         #path = parse(f"$.Select.[*].*.Expression.SourceRef.Source")
-        path = parse(f"$.Select[?(@.Name!='{table_field_old}')].*.Expression.SourceRef.Source")
-        nodes = path.find(self.query)
+        path = parse(f"$[?(@.Name!='{table_field_old}')].*.Expression.SourceRef.Source")
+        nodes = path.find(self.select)
         return [node.value for node in nodes]
 
     def _cleanup_tables(self, table_field_old):
         sources = self._return_from_tables()
         selects = self._return_select_tables(table_field_old)
         remove = [source for source in sources if source not in selects]
-        for table in self.query['From']:
+        for table in self.frm:
             if table['Name'] in remove:
-                self.query['From'].remove(table)
+                self.frm.remove(table)
 
 
 
