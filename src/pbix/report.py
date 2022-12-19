@@ -190,7 +190,7 @@ class DataVisual(GenericVisual):
         table_field_path = parse(self.table_field_path.format(table_field=old))
 
         if self.find_field(old):
-            if not self.config._find_prototypequery_table(new_table):
+            if not self.config.prototypequery._find_from_table_alias(new_table):
                 self.config.update_fields(old, new, new_table, new_measure)
                 self.data_transforms.update_fields(old, new, new_table, new_measure)
                 self.query.update_fields(old, new, new_measure)
@@ -208,59 +208,16 @@ class VisualConfig:
     def __init__(self, config: str) -> None:
         self.config = config
         self.single_visual = self.config['singleVisual']
-        self.prototypeQuery = self.single_visual['prototypeQuery']
+        self.prototypequery = VisualPrototypeQuery(self.single_visual['prototypeQuery'])
 
     def update_fields(self, table_field_old, table_field_new, table_new, field_new):
         """Replace fields in all relevant config settings."""
-        name = self._generate_prototypequery_table_name()
-        self._add_prototypequery_table(table_new, name)
-        self._update_prototypequery_table_name(table_field_old, name)
+        self.prototypequery.update_fields(table_field_old, table_field_new, table_new, field_new)
         self._update_column_properties(table_field_old, table_field_new)
         self._update_singlevisual(table_field_old, table_field_new)
-        self._update_prototypequery_fields(table_field_old, field_new)
 
         # Table field measures act like ids so update these last
-        self._update_prototypequery_table_fields(table_field_old, table_field_new)
         self._update_projections(table_field_old, table_field_new)
-
-    def _find_prototypequery_table(self, table) -> str:
-        """Finds if a table is present as a source in the prototypequery object."""
-        table_path = parse(f"$.From[?(@.Entity=='{table}')]")
-        table = table_path.find(self.prototypeQuery)
-        return table
-
-    def _return_prototypequery_tables(self):
-        """Returns all the currently used table name aliases in the prototypequery."""
-        table_path = parse(f"$.From.[*].Name")
-        tables = table_path.find(self.prototypeQuery)
-        return [name.value for name in tables]
-
-    def _generate_prototypequery_table_name(self):
-        """Returns a new table name alias for additions to the prototypequery."""
-        names = self._return_prototypequery_tables()
-        names = [int(name.replace('s', '0')) for name in names]
-        return 's' + str(max(names) + 1)
-
-    def _add_prototypequery_table(self, table, name):
-        """Adds a new table to the prototypequery."""
-        table = {"Name": None, "Entity": table, "Type": 0}
-        table['Name'] = name
-        self.prototypeQuery['From'].append(table)
-
-    def _update_prototypequery_table_name(self, table_field, name):
-        """Updates prototypequery table name alias."""
-        path = parse(f"$.Select[?(@.Name=='{table_field}')].Measure.Expression.SourceRef.Source")
-        path.update(self.prototypeQuery, name)
-
-    def _update_prototypequery_fields(self, table_field, field):
-        """Updating prototypequery fields."""
-        path = parse(f"$.Select[?(@.Name=='{table_field}')].Measure.Property")
-        path.update(self.prototypeQuery, field)
-
-    def _update_prototypequery_table_fields(self, table_field_old, table_field_new):
-        """Updating prototypequery table fields."""
-        path = parse(f"$.Select[?(@.Name=='{table_field_old}')].Name")
-        path.update(self.prototypeQuery, table_field_new)
 
     def _update_projections(self, table_field_old, table_field_new):
         """Updating projections."""
@@ -277,6 +234,88 @@ class VisualConfig:
         """Update single visual."""
         path = parse(f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata")
         path.update(self.single_visual, table_field_new)
+
+
+class VisualPrototypeQuery:
+    def __init__(self, prototypequery) -> None:
+        self.prototypeQuery = prototypequery
+
+    def update_fields(self, table_field_old, table_field_new, table_new, field_new):
+        self._cleanup_tables(table_field_old)
+        name = self._generate_table_alias()
+        if not self._find_from_table_alias(table_new):
+
+            """
+            Options:
+            - New and old table are still required
+                - Just need to change the fields and aliases in the select statement
+            - Old table is not required
+                - Need to cleanup the old table
+            1. Check if node needs to be removed and remove
+            2. Get table alias for new table, if
+            3. Add node
+            """
+            self._add_prototypequery_table(table_new, name)
+        self._update_select_table_alias(table_field_old, name)
+        self._update_select_fields(table_field_old, field_new)
+
+        # Table field measures act like ids so update these last
+        self._update_select_table_fields(table_field_old, table_field_new)
+
+    def _find_from_table_alias(self, table) -> str:
+        """Finds if a table is present as a source in the prototypequery object."""
+        table_path = parse(f"$.From[?(@.Entity=='{table}')].Name")
+        table = table_path.find(self.prototypeQuery)
+        return table
+
+    def _return_from_tables(self):
+        """Returns all the currently used table name aliases in the prototypequery."""
+        table_path = parse(f"$.From.[*].Name")
+        tables = table_path.find(self.prototypeQuery)
+        return [name.value for name in tables]
+
+    def _generate_table_alias(self):
+        """Returns a new table name alias for additions to the prototypequery."""
+        names = self._return_from_tables()
+        names = [int(name.replace('s', '0')) for name in names] # Seems sus
+        if names:
+            return 's' + str(max(names) + 1)
+        return 's'
+
+    def _add_prototypequery_table(self, table, name):
+        """Adds a new table to the prototypequery."""
+        table = {"Name": name, "Entity": table, "Type": 0}
+        self.prototypeQuery['From'].append(table)
+
+    def _update_select_fields(self, table_field, field):
+        """Updating prototypequery fields."""
+        path = parse(f"$.Select[?(@.Name=='{table_field}')].Measure.Property")
+        path.update(self.prototypeQuery, field)
+
+    def _update_select_table_alias(self, table_field, name):
+        """Updates prototypequery table name alias."""
+        path = parse(f"$.Select[?(@.Name=='{table_field}')].Measure.Expression.SourceRef.Source")
+        path.update(self.prototypeQuery, name)
+
+    def _update_select_table_fields(self, table_field_old, table_field_new):
+        """Updating prototypequery table fields."""
+        path = parse(f"$.Select[?(@.Name=='{table_field_old}')].Name")
+        path.update(self.prototypeQuery, table_field_new)
+
+    def _return_select_tables(self, table_field_old):
+        #path = parse(f"$.Select.[*].*.Expression.SourceRef.Source")
+        path = parse(f"$.Select[?(@.Name!='{table_field_old}')].*.Expression.SourceRef.Source")
+        nodes = path.find(self.prototypeQuery)
+        return [node.value for node in nodes]
+
+    def _cleanup_tables(self, table_field_old):
+        sources = self._return_from_tables()
+        selects = self._return_select_tables(table_field_old)
+        remove = [source for source in sources if source not in selects]
+        for table in self.prototypeQuery['From']:
+            if table['Name'] in remove:
+                self.prototypeQuery['From'].remove(table)
+
 
 
 class VisualQuery:
