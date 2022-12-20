@@ -192,7 +192,7 @@ class DataVisual(GenericVisual):
 
         if self.find_field(old):
             self.config.update_fields(old, new, new_table, old_measure, new_measure)
-            self.data_transforms.update_fields(old, new, new_table, new_measure)
+            self.data_transforms.update_fields(old, new, new_table, old_measure, new_measure)
             self.query.update_fields(old, new, new_table, old_measure, new_measure)
             self.filters.update_fields(old, new, new_table, old_measure, new_measure)
             for option, value in self.visual_options.items():
@@ -353,12 +353,15 @@ class VisualDataTransforms:
 
     def __init__(self, data_transforms) -> None:
         self.data_transforms = data_transforms
+        self.metadata = self.data_transforms["queryMetadata"]
 
-    def update_fields(self, table_field_old, table_field_new, table_new, field_new):
+    def update_fields(self, table_field_old, table_field_new, table_new, field_old, field_new):
         """Replace fields in all relevant datatransforms settings."""
         self._update_datatransforms_metadata(table_field_old, table_field_new)
         self._update_datatransforms_selects(table_field_old, table_new)
         self._update_datatransforms_selects_field(table_field_old, field_new)
+        self._update_query_metadata_filters_table(field_old, table_new)
+        self._update_query_metadata_filters_property(field_old, field_new)
 
         # Table field measures act like ids so update these last
         self._update_datatransforms_selects_table_field(table_field_old, table_field_new)
@@ -388,6 +391,14 @@ class VisualDataTransforms:
         """Update table.field in query metadata."""
         path = parse(f"$.queryMetadata.Select[?(@.Name=='{table_field_old}')].Name")
         path.update(self.data_transforms, table_field_new)
+
+    def _update_query_metadata_filters_table(self, field_old, table_new):
+        path = parse(f"$.Filters[?(@.expression.*.Property=='{field_old}')].expression.*.Expression.SourceRef.Entity")
+        path.update(self.metadata, table_new)
+
+    def _update_query_metadata_filters_property(self, field_old, field_new):
+        path = parse(f"$.Filters[?(@.expression.*.Property=='{field_old}')].expression.*.Property")
+        path.update(self.metadata, field_new)
 
 
 class VisualFilters:
