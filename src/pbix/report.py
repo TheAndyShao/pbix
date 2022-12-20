@@ -166,13 +166,13 @@ class DataVisual(GenericVisual):
     def __init__(self, Visual: GenericVisual) -> None:
         super().__init__(Visual.layout)
         self.title: str = self._return_visual_title()
-        self.filters: str = self._parse_visual_option('filters')
+        self.filters: str = VisualFilters(self._parse_visual_option('filters'))
         self.query: str or None =  VisualQuery(self._parse_visual_option('query'))
         self.data_transforms: str or None =  VisualDataTransforms(self._parse_visual_option('dataTransforms'))
         self.config = VisualConfig(self.config)
         self.visual_options = {
                 "config": self.config.config,
-                "filters": self.filters,
+                "filters": self.filters.filters,
                 "query": self.query.visual_query,
                 "dataTransforms": self.data_transforms.data_transforms
             }
@@ -194,6 +194,7 @@ class DataVisual(GenericVisual):
             self.config.update_fields(old, new, new_table, old_measure, new_measure)
             self.data_transforms.update_fields(old, new, new_table, new_measure)
             self.query.update_fields(old, new, new_table, old_measure, new_measure)
+            self.filters.update_fields(old_measure, new_table, new_measure)
             for option, value in self.visual_options.items():
                 #field_path.update(value, new_measure)
                 #table_field_path.update(value, new)
@@ -377,6 +378,24 @@ class VisualDataTransforms:
         """Update table.field in query metadata."""
         path = parse(f"$.queryMetadata.Select[?(@.Name=='{table_field_old}')].Name")
         path.update(self.data_transforms, table_field_new)
+
+
+class VisualFilters:
+
+    def __init__(self, filters) -> None:
+        self.filters = filters
+
+    def update_fields(self, field_old, table_new, field_new):
+        self._update_table(field_old, table_new)
+        self._update_field(field_old, field_new)
+
+    def _update_table(self, field_old, table_new):
+        path = parse(f"$[?(@.expression.*.Property=='{field_old}')].expression.*.Expression.SourceRef.Entity")
+        path.update(self.filters, table_new)
+
+    def _update_field(self, field_old, field_new):
+        path = parse(f"$[?(@.expression.*.Property=='{field_old}')].expression.*.Property")
+        path.update(self.filters, field_new)
 
 
 class Slicer(DataVisual):
