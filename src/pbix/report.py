@@ -131,7 +131,7 @@ class GenericVisual:
 
     def __init__(self, layout: str) -> None:
         self.layout: str = layout
-        self.config: str = self._parse_visual_option('config')
+        self.config: str = json.loads(self.layout.get('config'))
         self.title: str or None = None
         self.type: str or None = self._return_visual_type()
         non_data_visuals = ['image', 'textbox', 'shape', 'actionButton', None]
@@ -150,12 +150,6 @@ class GenericVisual:
         typ = typ_path.find(self.config)
         return typ[0].value if typ else None
 
-    def _parse_visual_option(self, visual_option: str) -> str or None:
-        """Returns a JSON object or None from visual option string"""
-        if visual_option in self.layout.keys():
-            return json.loads(self.layout[visual_option])
-        return None
-
 
 class DataVisual(GenericVisual):
     """A class representing visuals that depend on a data model."""
@@ -166,7 +160,7 @@ class DataVisual(GenericVisual):
     def __init__(self, Visual: GenericVisual) -> None:
         super().__init__(Visual.layout)
         self.title: str = self._return_visual_title()
-        self.filters: str = VisualFilters(self._parse_visual_option('filters'))
+        self.filters: str = VisualFilters(json.loads(self.layout.get('filters')))
         self.query: str or None =  VisualQuery(json.loads(self.layout.get('query'))) if 'query' in self.layout else None
         self.data_transforms: str or None =  VisualDataTransforms(json.loads(self.layout.get('dataTransforms'))) if 'dataTransforms' in self.layout else None
         self.config = VisualConfig(self.config)
