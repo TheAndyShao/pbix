@@ -167,14 +167,14 @@ class DataVisual(GenericVisual):
         super().__init__(Visual.layout)
         self.title: str = self._return_visual_title()
         self.filters: str = VisualFilters(self._parse_visual_option('filters'))
-        self.query: str or None =  VisualQuery(self._parse_visual_option('query'))
-        self.data_transforms: str or None =  VisualDataTransforms(self._parse_visual_option('dataTransforms'))
+        self.query: str or None =  VisualQuery(json.loads(self.layout.get('query'))) if 'query' in self.layout else None
+        self.data_transforms: str or None =  VisualDataTransforms(json.loads(self.layout.get('dataTransforms'))) if 'dataTransforms' in self.layout else None
         self.config = VisualConfig(self.config)
         self.visual_options = {
                 "config": self.config.config,
                 "filters": self.filters.filters,
-                "query": self.query.visual_query,
-                "dataTransforms": self.data_transforms.data_transforms
+                "query": self.query.visual_query if self.query else None,
+                "dataTransforms": self.data_transforms.data_transforms if self.data_transforms else None
             }
 
     def find_field(self, table_field: str) -> bool:
@@ -353,7 +353,7 @@ class VisualDataTransforms:
 
     def __init__(self, data_transforms) -> None:
         self.data_transforms = data_transforms
-        self.metadata = self.data_transforms["queryMetadata"]
+        self.metadata = self.data_transforms.get("queryMetadata")
 
     def update_fields(self, table_field_old, table_field_new, table_new, field_old, field_new):
         """Replace fields in all relevant datatransforms settings."""
