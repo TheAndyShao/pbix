@@ -185,12 +185,12 @@ class DataVisual(GenericVisual):
         table_field_path = parse(self.table_field_path.format(table_field=old))
 
         if self.find_field(old):
-            self.config.update_fields(old, new, new_table, old_measure, new_measure)
+            self.config.update_fields(old, new, old_table, new_table, old_measure, new_measure)
             if self.data_transforms:
                 self.data_transforms.update_fields(old, new, new_table, old_measure, new_measure)
             if self.query:
-                self.query.update_fields(old, new, new_table, old_measure, new_measure)
-            self.filters.update_fields(old, new, new_table, old_measure, new_measure)
+                self.query.update_fields(old, new, old_table, new_table, old_measure, new_measure)
+            self.filters.update_fields(old, new, old_table, new_table, old_measure, new_measure)
             for option, value in self.visual_options.items():
                 #field_path.update(value, new_measure)
                 #table_field_path.update(value, new)
@@ -208,9 +208,9 @@ class VisualConfig:
         self.single_visual = self.config['singleVisual']
         self.prototypequery = GenericVisualQuery(self.single_visual['prototypeQuery'])
 
-    def update_fields(self, table_field_old, table_field_new, table_new, field_old, field_new):
+    def update_fields(self, table_field_old, table_field_new, table_old, table_new, field_old, field_new):
         """Replace fields in all relevant config settings."""
-        self.prototypequery.update_fields(table_field_old, table_field_new, table_new, field_old, field_new)
+        self.prototypequery.update_fields(table_field_old, table_field_new, table_old, table_new, field_old, field_new)
         self._update_column_properties(table_field_old, table_field_new)
         self._update_singlevisual(table_field_old, table_field_new)
 
@@ -242,8 +242,8 @@ class GenericVisualQuery:
         self.where = self.query.get('Where')
         self.order_by = self.query.get('OrderBy')
 
-    def update_fields(self, table_field_old, table_field_new, table_new, field_old, field_new):
-        self._cleanup_tables(table_field_old)
+    def update_fields(self, table_field_old, table_field_new, table_old, table_new, field_old, field_new):
+        self._cleanup_tables(table_field_old, table_old)
         table_alias_new = self._find_from_table_alias(table_new)
         if not table_alias_new:
             table_alias_new = self._generate_table_alias(table_new)
@@ -290,12 +290,12 @@ class GenericVisualQuery:
 
     def _update_select_fields(self, table_field, field):
         """Updating prototypequery fields."""
-        path = parse(f"$[?(@.Name=='{table_field}')].Measure.Property")
+        path = parse(f"$[?(@.Name=='{table_field}')].*.Property")
         path.update(self.select, field)
 
     def _update_select_table_alias(self, table_field, name):
         """Updates prototypequery table name alias."""
-        path = parse(f"$[?(@.Name=='{table_field}')].Measure.Expression.SourceRef.Source")
+        path = parse(f"$[?(@.Name=='{table_field}')].*.Expression.SourceRef.Source")
         path.update(self.select, name)
 
     def _update_select_table_fields(self, table_field_old, table_field_new):
@@ -308,13 +308,14 @@ class GenericVisualQuery:
         nodes = path.find(self.select)
         return [node.value for node in nodes]
 
-    def _cleanup_tables(self, table_field_old):
-        sources = self._return_from_tables()
+    def _cleanup_tables(self, table_field_old, table_old):
+        table_alias_old = self._find_from_table_alias(table_old)
         selects = self._return_select_tables(table_field_old)
-        remove = [source for source in sources if source not in selects]
-        for table in self.frm:
-            if table['Name'] in remove:
-                self.frm.remove(table)
+        wheres = self._return_where_tables(table_alias_old)
+        if table_alias_old not in selects and table_alias_old not in wheres:
+            for table in self.frm:
+                if table['Name'] == table_alias_old:
+                    self.frm.remove(table)
 
     def  _update_orderby_table_alias(self, field_old, alias_new):
         path = parse(f"$[?(@.Expression.*.Property=='{field_old}')].Expression.*.Expression.SourceRef.Source")
@@ -325,12 +326,17 @@ class GenericVisualQuery:
         path.update(self.order_by, field_new)
 
     def _update_where_table_alias(self, field_old, name):
-        path = parse(f"$[?(@.Condition.Comparison.*.*.Property=='{field_old}')].Condition.Comparison.*.*.Expression.SourceRef.Source")
+        path = parse(f"$[?(@..Property=='{field_old}')]..Source")
         path.update(self.where, name)
 
     def _update_where_field(self, field_old, field_new):
-        path = parse(f"$[?(@.Condition.Comparison.*.*.Property=='{field_old}')].Condition.Comparison.*.*.Property")
+        path = parse(f"$[?(@..Property=='{field_old}')]..Property")
         path.update(self.where, field_new)
+
+    def _return_where_tables(self, alias):
+        path = parse(f"$[?(@..Source!='{alias}')]..Source")
+        nodes = path.find(self.where)
+        return [node.value for node in nodes]
 
 
 class VisualQuery:
@@ -340,11 +346,11 @@ class VisualQuery:
         self.visual_query = visual_query
         self.commands = self.visual_query.get('Commands')
 
-    def update_fields(self, table_field_old, table_field_new, table_new, field_old, field_new):
+    def update_fields(self, table_field_old, table_field_new, table_old, table_new, field_old, field_new):
         """Replace field in all relevant query settings."""
         for command in self.commands:
             query = GenericVisualQuery(command['SemanticQueryDataShapeCommand']['Query'])
-            query.update_fields(table_field_old, table_field_new, table_new, field_old, field_new)
+            query.update_fields(table_field_old, table_field_new, table_old, table_new, field_old, field_new)
 
 
 class VisualDataTransforms:
@@ -373,7 +379,7 @@ class VisualDataTransforms:
 
     def _update_datatransforms_selects(self, table_field_old, table_new):
         """Update table references in selects."""
-        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.Measure.Expression.SourceRef.Entity")
+        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.*.Expression.SourceRef.Entity")
         path.update(self.data_transforms, table_new)
 
     def _update_datatransforms_selects_field(self, table_field_old, field):
@@ -405,8 +411,8 @@ class VisualFilters:
     def __init__(self, filters) -> None:
         self.filters = filters
 
-    def update_fields(self, table_field_old, table_field_new, table_new, field_old, field_new):
-        self._update_filters(table_field_old, table_field_new, table_new, field_old, field_new)
+    def update_fields(self, table_field_old, table_field_new, table_old, table_new, field_old, field_new):
+        self._update_filters(table_field_old, table_field_new, table_old, table_new, field_old, field_new)
         self._update_table(field_old, table_new)
         self._update_field(field_old, field_new)
 
@@ -418,11 +424,11 @@ class VisualFilters:
         path = parse(f"$[?(@.expression.*.Property=='{field_old}')].expression.*.Property")
         path.update(self.filters, field_new)
 
-    def _update_filters(self, table_field_old, table_field_new, table_new, field_old, field_new):
+    def _update_filters(self, table_field_old, table_field_new, table_old, table_new, field_old, field_new):
         path = parse(f"$[?(@.expression.*.Property=='{field_old}')].filter")
         for filter in path.find(self.filters):
             filtr = GenericVisualQuery(filter.value)
-            filtr.update_fields(table_field_old, table_field_new, table_new, field_old, field_new)
+            filtr.update_fields(table_field_old, table_field_new, table_old, table_new, field_old, field_new)
 
 
 class Slicer(DataVisual):
