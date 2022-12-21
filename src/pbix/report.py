@@ -186,13 +186,16 @@ class DataVisual(GenericVisual):
 
         if self.find_field(old):
             self.config.update_fields(old, new, new_table, old_measure, new_measure)
-            self.data_transforms.update_fields(old, new, new_table, old_measure, new_measure)
-            self.query.update_fields(old, new, new_table, old_measure, new_measure)
+            if self.data_transforms:
+                self.data_transforms.update_fields(old, new, new_table, old_measure, new_measure)
+            if self.query:
+                self.query.update_fields(old, new, new_table, old_measure, new_measure)
             self.filters.update_fields(old, new, new_table, old_measure, new_measure)
             for option, value in self.visual_options.items():
                 #field_path.update(value, new_measure)
                 #table_field_path.update(value, new)
-                self.layout[option] = json.dumps(value)
+                if value:
+                    self.layout[option] = json.dumps(value)
             self.updated = 1
             print(f"Updated: {self.title}")
 
@@ -243,7 +246,7 @@ class GenericVisualQuery:
         self._cleanup_tables(table_field_old)
         table_alias_new = self._find_from_table_alias(table_new)
         if not table_alias_new:
-            table_alias_new = self._generate_table_alias()
+            table_alias_new = self._generate_table_alias(table_new)
             self._add_prototypequery_table(table_new, table_alias_new)
         self._update_select_table_alias(table_field_old, table_alias_new)
         self._update_select_fields(table_field_old, field_new)
@@ -269,14 +272,16 @@ class GenericVisualQuery:
         tables = table_path.find(self.frm)
         return [name.value for name in tables]
 
-    def _generate_table_alias(self):
+    def _generate_table_alias(self, table_new):
         """Returns a new table name alias for additions to the prototypequery."""
+        # Power BI reassigns aliases when visual is updated so don't need to replicate exactly
+        alias = table_new[:1].lower()
         regex = re.compile('[^0-9]')
         names = self._return_from_tables()
-        names = [int(regex.sub('0', name)) for name in names]
+        names = [int(regex.sub('0', name)) for name in names if name[:1]==alias]
         if names:
-            return 's' + str(max(names) + 1)
-        return 's'
+            return alias + str(max(names) + 1)
+        return alias
 
     def _add_prototypequery_table(self, table, name):
         """Adds a new table to the prototypequery."""
