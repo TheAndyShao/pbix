@@ -16,6 +16,7 @@ class Report:
         self.layout: str = self._read_layout(filepath)
         self.layout_full_json: str = self._read_full_json_layout(filepath)
         self.field_set: set[str] = self.get_all_fields()
+        #self.pages = self.layout.get('sections')
         self.updated: int = 0
 
     def get_all_fields(self) -> None:
@@ -53,6 +54,11 @@ class Report:
                 visual.update_fields(old, new)
                 self._update_visual_layout(i, j, visual.layout)
                 self.updated += visual.updated
+        # TODO: Currently the below causes report level slicers to break.
+        # for page in self.pages:
+        #     page = ReportPage(page)
+        #     page.update_fields(old, new)
+        #     self.updated += page.updated
         if self.updated == 0:
             print('No fields to update')
 
@@ -124,6 +130,24 @@ class Report:
     def _update_visual_layout(self, page: int, visual: int, layout: str) -> None:
         """Updates visual layout with new definition."""
         self.layout['sections'][page]['visualContainers'][visual] = layout
+
+
+class ReportPage:
+
+    def __init__(self, page) -> None:
+        self.page = page
+        self.filters = VisualFilters(json.loads(self.page.get('filters')))
+        self.updated = 0
+
+    def update_fields(self, table_field_old, table_field_new):
+        # TODO: Currently this causes report level slicers to break,
+        # even when the slicers conditions are cleared.
+        # Return to in the future to enable report level slicer updating.
+        table_old, field_old = table_field_old.split('.')
+        table_new, field_new = table_field_new.split('.')
+        self.filters.update_fields(table_field_old, table_field_new, table_old, table_new, field_old, field_new)
+
+        self.page['filters'] = self.filters.filters
 
 
 class GenericVisual:
@@ -430,6 +454,9 @@ class VisualFilters:
             filtr = GenericVisualQuery(filter.value)
             filtr.update_fields(table_field_old, table_field_new, table_old, table_new, field_old, field_new)
 
+    def _clear_filters(self):
+        for filter in self.filters:
+            filter.pop('filter', None)
 
 class Slicer(DataVisual):
     """A class representing a slicer."""
