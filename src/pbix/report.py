@@ -243,7 +243,7 @@ class VisualConfig:
 
     def _update_projections(self, table_field_old, table_field_new):
         """Updating projections."""
-        path = parse(f"$.projections.Values[?(@.queryRef=='{table_field_old}')].queryRef")
+        path = parse(f"$.projections.*[?(@.queryRef=='{table_field_old}')].queryRef")
         path.update(self.single_visual, table_field_new)
 
     def _update_column_properties(self, table_field_old, table_field_new):
