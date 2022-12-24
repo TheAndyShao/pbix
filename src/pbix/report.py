@@ -276,8 +276,8 @@ class GenericVisualQuery:
         self._update_select_fields(table_field_old, field_new)
         self._update_orderby_table_alias(field_old, table_alias_new)
         self._update_orderby_field(field_old, field_new)
-        self._update_where_table_alias(field_old, table_alias_new)
-        self._update_where_field(field_old, field_new)
+        if self.where:
+            self._update_where_settings(field_old, field_new, table_alias_new)
 
         # Table field measures act like ids so update these last
         self._update_select_table_fields(table_field_old, table_field_new)
@@ -349,13 +349,22 @@ class GenericVisualQuery:
         path = parse(f"$[?(@.Expression.*.Property=='{field_old}')].Expression.*.Property")
         path.update(self.order_by, field_new)
 
-    def _update_where_table_alias(self, field_old, name):
-        path = parse(f"$[?(@..Property=='{field_old}')]..Source")
-        path.update(self.where, name)
+    def _update_where_settings(self, field_old, field_new, name):
+        for node in self.where:
+            for _, setting in node.items():
+                self._update_where_table_alias(field_old, name, setting)
+                self._update_where_field(field_old, field_new, setting)
 
-    def _update_where_field(self, field_old, field_new):
-        path = parse(f"$[?(@..Property=='{field_old}')]..Property")
-        path.update(self.where, field_new)
+    def _update_where_table_alias(self, field_old, name, condition):
+        path = parse(f"$..Property")
+        if path.find(condition)[0].value == field_old:
+            path = parse(f"$..Source")
+            path.update(condition, name)
+
+    def _update_where_field(self, field_old, field_new, condition):
+        path = parse(f"$..Property")
+        if path.find(condition)[0].value == field_old:
+            path.update(condition, field_new)
 
     def _return_where_tables(self, alias):
         path = parse(f"$[?(@..Source!='{alias}')]..Source")
