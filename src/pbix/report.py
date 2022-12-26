@@ -142,12 +142,15 @@ class Report:
 
 
 class ReportPage:
+    """A class representing a single page within a report."""
+
     def __init__(self, page) -> None:
         self.page = page
         self.filters = Visual.Filters(json.loads(self.page.get("filters")))
         self.updated = 0
 
-    def update_fields(self, table_field_old, table_field_new) -> None:
+    def update_fields(self, table_field_old: str, table_field_new: str) -> None:
+        """Finds usage of an existing field and replaces it with a new specified field."""
         # TODO: Currently this causes report level slicers to break,
         # even when the slicers conditions are cleared.
         # Return to in the future to enable report level slicer updating.

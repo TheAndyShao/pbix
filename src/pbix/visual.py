@@ -263,6 +263,8 @@ class DataTransforms:
 
 
 class Filters:
+    """A class representing the filter object of a visual."""
+
     def __init__(self, filters) -> None:
         self.filters = filters
 
@@ -275,6 +277,7 @@ class Filters:
         field_old: str,
         field_new: str,
     ) -> None:
+        """Finds usage of an existing field and replaces it with a new specified field."""
         self._update_filters(
             table_field_old, table_field_new, table_old, table_new, field_old, field_new
         )
@@ -303,9 +306,9 @@ class Filters:
         field_new: str,
     ) -> None:
         path = parse(f"$[?(@.expression.*.Property=='{field_old}')].filter")
-        for filter in path.find(self.filters):
-            filtr = GenericQuery(filter.value)
-            filtr.update_fields(
+        for flt in path.find(self.filters):
+            flt = GenericQuery(filter.flt)
+            flt.update_fields(
                 table_field_old,
                 table_field_new,
                 table_old,
@@ -315,11 +318,13 @@ class Filters:
             )
 
     def _clear_filters(self) -> None:
-        for filter in self.filters:
-            filter.pop("filter", None)
+        for flt in self.filters:
+            flt.pop("filter", None)
 
 
 class GenericQuery:
+    """A class representing a query object used by visuals to query the associated data model."""
+
     def __init__(self, query) -> None:
         self.query = query
         self.frm = self.query.get("From")
@@ -336,6 +341,7 @@ class GenericQuery:
         field_old: str,
         field_new: str,
     ) -> None:
+        """Finds usage of an existing field and replaces it with a new specified field."""
         self._cleanup_tables(table_field_old, table_old)
         table_alias_new = self._find_from_table_alias(table_new)
         if not table_alias_new:
@@ -452,7 +458,7 @@ class GenericQuery:
 
 
 class Slicer(DataVisual):
-    """A class representing a slicer."""
+    """A class representing a slicer visual."""
 
     def unselect_all_items(self) -> None:
         """Unselects all slicer members where no default selection is defined"""
