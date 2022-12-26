@@ -343,7 +343,7 @@ class GenericVisualQuery:
 
     def _return_from_tables(self) -> list[str]:
         """Returns all the currently used table name aliases in the prototypequery."""
-        table_path = parse(f"$.[*].Name")
+        table_path = parse("$.[*].Name")
         tables = table_path.find(self.frm)
         return [name.value for name in tables]
 
@@ -415,15 +415,15 @@ class GenericVisualQuery:
     def _update_where_table_alias(
         self, field_old: str, name: str, condition: str
     ) -> None:
-        path = parse(f"$..Property")
+        path = parse("$..Property")
         if path.find(condition)[0].value == field_old:
-            path = parse(f"$..Source")
+            path = parse("$..Source")
             path.update(condition, name)
 
     def _update_where_field(
         self, field_old: str, field_new: str, condition: str
     ) -> None:
-        path = parse(f"$..Property")
+        path = parse("$..Property")
         if path.find(condition)[0].value == field_old:
             path.update(condition, field_new)
 
