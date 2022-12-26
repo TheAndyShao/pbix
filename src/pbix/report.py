@@ -173,17 +173,17 @@ class GenericVisual:
 
     def _return_visual_title(self) -> Union[str, None]:
         """Return title of visual."""
-        title_path = parse(
+        path = parse(
             "$.singleVisual.vcObjects.title[0].properties.text.expr.Literal.Value"
         )
-        title = title_path.find(self.config)
-        return title[0].value if title else None
+        node = path.find(self.config)
+        return node[0].value if node else None
 
     def _return_visual_type(self) -> Union[str, None]:
         """Return type of visual."""
-        typ_path = parse("$.singleVisual.visualType")
-        typ = typ_path.find(self.config)
-        return typ[0].value if typ else None
+        path = parse("$.singleVisual.visualType")
+        node = path.find(self.config)
+        return node[0].value if node else None
 
 
 class DataVisual(GenericVisual):
@@ -220,33 +220,31 @@ class DataVisual(GenericVisual):
 
     def find_field(self, table_field: str) -> bool:
         """Find if a field is used in the visual"""
-        table_measure_path = parse(
-            self.table_field_path.format(table_field=table_field)
-        )
-        return any(table_measure_path.find(v) for v in self.visual_options.values())
+        path = parse(self.table_field_path.format(table_field=table_field))
+        return any(path.find(v) for v in self.visual_options.values())
 
     def update_fields(self, old: str, new: str) -> None:
         """Searches for relevant keys for fields and updates their value pairs."""
-        old_table, old_measure = old.split(".")
-        new_table, new_measure = new.split(".")
+        old_table, old_field = old.split(".")
+        new_table, new_field = new.split(".")
 
-        field_path = parse(self.field_path.format(field=old_measure))
+        field_path = parse(self.field_path.format(field=old_field))
         table_field_path = parse(self.table_field_path.format(table_field=old))
 
         if self.find_field(old):
             self.config.update_fields(
-                old, new, old_table, new_table, old_measure, new_measure
+                old, new, old_table, new_table, old_field, new_field
             )
             if self.data_transforms:
                 self.data_transforms.update_fields(
-                    old, new, new_table, old_measure, new_measure
+                    old, new, new_table, old_field, new_field
                 )
             if self.query:
                 self.query.update_fields(
-                    old, new, old_table, new_table, old_measure, new_measure
+                    old, new, old_table, new_table, old_field, new_field
                 )
             self.filters.update_fields(
-                old, new, old_table, new_table, old_measure, new_measure
+                old, new, old_table, new_table, old_field, new_field
             )
             for option, value in self.visual_options.items():
                 if value:
@@ -339,17 +337,17 @@ class GenericVisualQuery:
 
     def _find_from_table_alias(self, table: str) -> Union[str, None]:
         """Finds if a table is present as a source in the prototypequery object."""
-        table_path = parse(f"$[?(@.Entity=='{table}')].Name")
-        table = table_path.find(self.frm)
-        if table:
-            return table[0].value
+        path = parse(f"$[?(@.Entity=='{table}')].Name")
+        node = path.find(self.frm)
+        if node:
+            return node[0].value
         return
 
     def _return_from_tables(self) -> list[str]:
         """Returns all the currently used table name aliases in the prototypequery."""
-        table_path = parse("$.[*].Name")
-        tables = table_path.find(self.frm)
-        return [name.value for name in tables]
+        path = parse("$.[*].Name")
+        nodes = path.find(self.frm)
+        return [name.value for name in nodes]
 
     def _generate_table_alias(self, table_new: str) -> str:
         """Returns a new table name alias for additions to the prototypequery."""
