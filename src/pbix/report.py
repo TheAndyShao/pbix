@@ -57,7 +57,7 @@ class Report:
         print(f"Updating: {self.filename}")
         for i, j, visual in self._generic_visuals_generator():
             if visual.is_data_visual:
-                visual = Visual.DataVisual(visual)
+                visual = Visual.DataVisual(visual.layout)
                 visual.update_fields(old, new)
                 self.layout["sections"][i]["visualContainers"][j] = visual.layout
                 self.updated += visual.updated

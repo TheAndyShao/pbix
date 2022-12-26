@@ -38,8 +38,8 @@ class DataVisual(GenericVisual):
 
     table_field_path = "$..@[?(@.*=='{table_field}')].[queryRef, Name, queryName]"
 
-    def __init__(self, Visual: GenericVisual) -> None:
-        super().__init__(Visual.layout)
+    def __init__(self, layout: dict[str, Any]) -> None:
+        super().__init__(layout)
         self.title: Union[str, None] = self._return_visual_title()
         self.filters: Filters = Filters(json.loads(self.layout.get("filters")))
         self.query: Union[Query, None] = (
