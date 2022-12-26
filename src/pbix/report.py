@@ -102,7 +102,6 @@ class Report:
         with zf.ZipFile(filepath, "r") as zip_file:
             string = zip_file.read("Report/Layout").decode("utf-16")
             return json.loads(string)
-            print(type)
 
     def _read_full_json_layout(self, filepath: str) -> str:
         """Return a fully JSONified object of the layout file within the PBIX file."""
