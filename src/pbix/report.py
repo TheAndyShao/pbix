@@ -17,7 +17,7 @@ class Report:
         self.filepath: str = filepath
         self.filename: str = os.path.basename(filepath)
         self.layout: dict[str, Any] = self._read_layout(filepath)
-        self.layout_full_json: dict[str, Any] = self._read_full_json_layout(filepath)
+        self.layout_full_json: dict[str, Any] = self._read_full_json_layout()
         self.field_set: set[str] = self.get_all_fields()
         # self.pages = self.layout.get('sections')
         self.updated: int = 0
@@ -98,36 +98,40 @@ class Report:
         os.remove(self.filepath)
         os.rename(temp_filepath, self.filepath)
 
+    def write_json_layout(self) -> None:
+        """Write the cleaned JSON object to file."""
+        with open("layout.json", "w", encoding="utf-16") as outfile:
+            json.dump(self.layout_full_json, outfile)
+
     def _read_layout(self, filepath: str) -> dict[str, Any]:
         """Return a JSON object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, "r") as zip_file:
             string = zip_file.read("Report/Layout").decode("utf-16")
             return json.loads(string)
 
-    def _read_full_json_layout(self, filepath: str) -> dict[str, Any]:
+    def _read_full_json_layout(self) -> dict[str, Any]:
         """Return a fully JSONified object of the layout file within the PBIX file."""
-        with zf.ZipFile(filepath, "r") as zip_file:
-            string = zip_file.read("Report/Layout").decode("utf-16")
-            replacements = {
-                chr(0): "",
-                chr(28): "",
-                chr(29): "",
-                chr(25): "",
-                '"[': "[",
-                ']"': "]",
-                '"{': "{",
-                '}"': "}",
-                "\\\\": "\\",
-                '\\"': '"',
-            }
-            for original, replacement in replacements.items():
-                string = string.replace(original, replacement)
-            return json.loads(string)
+        string = json.dumps(self.layout)
+        string = self._unescape_json_string(string)
+        return json.loads(string)
 
-    def write_json_layout(self) -> None:
-        """Write the cleaned JSON object to file."""
-        with open("layout.json", "w", encoding="utf-16") as outfile:
-            json.dump(self.layout_full_json, outfile)
+    @staticmethod
+    def _unescape_json_string(string: str):
+        replacements = {
+            chr(0): "",
+            chr(28): "",
+            chr(29): "",
+            chr(25): "",
+            '"[': "[",
+            ']"': "]",
+            '"{': "{",
+            '}"': "}",
+            "\\\\": "\\",
+            '\\"': '"',
+        }
+        for original, replacement in replacements.items():
+            string = string.replace(original, replacement)
+        return string
 
     def _generic_visuals_generator(self) -> Iterable:
         """Generator for iterating through all visuals in a file."""
