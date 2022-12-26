@@ -188,9 +188,6 @@ class GenericVisual:
 class DataVisual(GenericVisual):
     """A class representing visuals that depend on a data model."""
 
-    field_path = "$..@[?(@.*=='{field}')].[Property, displayName, Restatement]"
-    table_field_path = "$..@[?(@.*=='{table_field}')].[queryRef, Name, queryName]"
-
     def __init__(self, Visual: GenericVisual) -> None:
         super().__init__(Visual.layout)
         self.title: str = self._return_visual_title()
@@ -246,8 +243,6 @@ class DataVisual(GenericVisual):
                 old, new, old_table, new_table, old_measure, new_measure
             )
             for option, value in self.visual_options.items():
-                # field_path.update(value, new_measure)
-                # table_field_path.update(value, new)
                 if value:
                     self.layout[option] = json.dumps(value)
             self.updated = 1
