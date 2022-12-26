@@ -15,8 +15,8 @@ class Report:
     def __init__(self, filepath: str) -> None:
         self.filepath: str = filepath
         self.filename: str = os.path.basename(filepath)
-        self.layout: str = self._read_layout(filepath)
-        self.layout_full_json: str = self._read_full_json_layout(filepath)
+        self.layout: dict[str, object] = self._read_layout(filepath)
+        self.layout_full_json: dict[str, object] = self._read_full_json_layout(filepath)
         self.field_set: set[str] = self.get_all_fields()
         # self.pages = self.layout.get('sections')
         self.updated: int = 0
@@ -97,13 +97,13 @@ class Report:
         os.remove(self.filepath)
         os.rename(temp_filepath, self.filepath)
 
-    def _read_layout(self, filepath: str) -> str:
+    def _read_layout(self, filepath: str) -> dict[str, object]:
         """Return a JSON object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, "r") as zip_file:
             string = zip_file.read("Report/Layout").decode("utf-16")
             return json.loads(string)
 
-    def _read_full_json_layout(self, filepath: str) -> str:
+    def _read_full_json_layout(self, filepath: str) -> dict[str, object]:
         """Return a fully JSONified object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, "r") as zip_file:
             string = zip_file.read("Report/Layout").decode("utf-16")
@@ -162,16 +162,16 @@ class ReportPage:
 class GenericVisual:
     """A base class to represent a generic visual object."""
 
-    def __init__(self, layout: str) -> None:
-        self.layout: str = layout
-        self.config: str = json.loads(self.layout.get("config"))
+    def __init__(self, layout: dict[str, object]) -> None:
+        self.layout: dict[str, object] = layout
+        self.config: dict[str, object] = json.loads(self.layout.get("config"))
         self.title: Union[str, None] = None
-        self.type: str or None = self._return_visual_type()
+        self.type: Union[str, None] = self._return_visual_type()
         non_data_visuals = ["image", "textbox", "shape", "actionButton", None]
         self.is_data_visual: bool = self.type not in non_data_visuals
         self.updated: int = 0
 
-    def _return_visual_title(self) -> str or None:
+    def _return_visual_title(self) -> Union[str, None]:
         """Return title of visual."""
         title_path = parse(
             "$.singleVisual.vcObjects.title[0].properties.text.expr.Literal.Value"
@@ -179,7 +179,7 @@ class GenericVisual:
         title = title_path.find(self.config)
         return title[0].value if title else None
 
-    def _return_visual_type(self) -> str or None:
+    def _return_visual_type(self) -> Union[str, None]:
         """Return type of visual."""
         typ_path = parse("$.singleVisual.visualType")
         typ = typ_path.find(self.config)
@@ -194,14 +194,14 @@ class DataVisual(GenericVisual):
 
     def __init__(self, Visual: GenericVisual) -> None:
         super().__init__(Visual.layout)
-        self.title: str = self._return_visual_title()
+        self.title: Union[str, None] = self._return_visual_title()
         self.filters: str = VisualFilters(json.loads(self.layout.get("filters")))
-        self.query: str or None = (
+        self.query: Union[object, None] = (
             VisualQuery(json.loads(self.layout.get("query")))
             if "query" in self.layout
             else None
         )
-        self.data_transforms: str or None = (
+        self.data_transforms: Union[object, None] = (
             VisualDataTransforms(json.loads(self.layout.get("dataTransforms")))
             if "dataTransforms" in self.layout
             else None
@@ -256,19 +256,19 @@ class DataVisual(GenericVisual):
 class VisualConfig:
     """A class representing the config settings of a visual."""
 
-    def __init__(self, config: str) -> None:
+    def __init__(self, config: dict[str, object]) -> None:
         self.config = config
         self.single_visual = self.config["singleVisual"]
         self.prototypequery = GenericVisualQuery(self.single_visual["prototypeQuery"])
 
     def update_fields(
         self,
-        table_field_old,
-        table_field_new,
-        table_old,
-        table_new,
-        field_old,
-        field_new,
+        table_field_old: str,
+        table_field_new: str,
+        table_old: str,
+        table_new: str,
+        field_old: str,
+        field_new: str,
     ) -> None:
         """Replace fields in all relevant config settings."""
         self.prototypequery.update_fields(
@@ -280,18 +280,20 @@ class VisualConfig:
         # Table field measures act like ids so update these last
         self._update_projections(table_field_old, table_field_new)
 
-    def _update_projections(self, table_field_old, table_field_new) -> None:
+    def _update_projections(self, table_field_old: str, table_field_new: str) -> None:
         """Updating projections."""
         path = parse(f"$.projections.*[?(@.queryRef=='{table_field_old}')].queryRef")
         path.update(self.single_visual, table_field_new)
 
-    def _update_column_properties(self, table_field_old, table_field_new) -> None:
+    def _update_column_properties(
+        self, table_field_old: str, table_field_new: str
+    ) -> None:
         """Update column properties if necessary."""
         column_properties = self.single_visual.get("columnProperties", [])
         if table_field_old in column_properties:
             column_properties[table_field_new] = column_properties.pop(table_field_old)
 
-    def _update_singlevisual(self, table_field_old, table_field_new) -> None:
+    def _update_singlevisual(self, table_field_old: str, table_field_new: str) -> None:
         """Update single visual."""
         path = parse(
             f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata"
