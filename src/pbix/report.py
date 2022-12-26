@@ -4,7 +4,7 @@ import json
 import os
 import re
 import zipfile as zf
-from typing import Any, Generator, Union
+from typing import Any, Generator, Iterable, Union
 
 from jsonpath_ng.ext import parse
 
@@ -15,8 +15,8 @@ class Report:
     def __init__(self, filepath: str) -> None:
         self.filepath: str = filepath
         self.filename: str = os.path.basename(filepath)
-        self.layout: dict[str, object] = self._read_layout(filepath)
-        self.layout_full_json: dict[str, object] = self._read_full_json_layout(filepath)
+        self.layout: dict[str, Any] = self._read_layout(filepath)
+        self.layout_full_json: dict[str, Any] = self._read_full_json_layout(filepath)
         self.field_set: set[str] = self.get_all_fields()
         # self.pages = self.layout.get('sections')
         self.updated: int = 0
@@ -97,13 +97,13 @@ class Report:
         os.remove(self.filepath)
         os.rename(temp_filepath, self.filepath)
 
-    def _read_layout(self, filepath: str) -> dict[str, object]:
+    def _read_layout(self, filepath: str) -> dict[str, Any]:
         """Return a JSON object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, "r") as zip_file:
             string = zip_file.read("Report/Layout").decode("utf-16")
             return json.loads(string)
 
-    def _read_full_json_layout(self, filepath: str) -> dict[str, object]:
+    def _read_full_json_layout(self, filepath: str) -> dict[str, Any]:
         """Return a fully JSONified object of the layout file within the PBIX file."""
         with zf.ZipFile(filepath, "r") as zip_file:
             string = zip_file.read("Report/Layout").decode("utf-16")
@@ -128,7 +128,7 @@ class Report:
         with open("layout.json", "w", encoding="utf-16") as outfile:
             json.dump(self.layout_full_json, outfile)
 
-    def _generic_visuals_generator(self) -> Generator[int, int, object]:
+    def _generic_visuals_generator(self) -> Iterable:
         """Generator for iterating through all visuals in a file."""
         for i, page in enumerate(self.layout["sections"]):
             visuals = page["visualContainers"]
@@ -162,9 +162,9 @@ class ReportPage:
 class GenericVisual:
     """A base class to represent a generic visual object."""
 
-    def __init__(self, layout: dict[str, object]) -> None:
-        self.layout: dict[str, object] = layout
-        self.config: dict[str, object] = json.loads(self.layout.get("config"))
+    def __init__(self, layout: dict[str, Any]) -> None:
+        self.layout: dict[str, Any] = layout
+        self.config: dict[str, Any] = json.loads(self.layout.get("config"))
         self.title: Union[str, None] = None
         self.type: Union[str, None] = self._return_visual_type()
         non_data_visuals = ["image", "textbox", "shape", "actionButton", None]
@@ -256,7 +256,7 @@ class DataVisual(GenericVisual):
 class VisualConfig:
     """A class representing the config settings of a visual."""
 
-    def __init__(self, config: dict[str, object]) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.single_visual = self.config["singleVisual"]
         self.prototypequery: GenericVisualQuery = GenericVisualQuery(
@@ -469,8 +469,8 @@ class VisualQuery:
 class VisualDataTransforms:
     """A class representing the datatransforms settings of a Visual."""
 
-    def __init__(self, data_transforms: dict[str, object]) -> None:
-        self.data_transforms: dict[str, object] = data_transforms
+    def __init__(self, data_transforms: dict[str, Any]) -> None:
+        self.data_transforms: dict[str, Any] = data_transforms
         self.metadata = self.data_transforms.get("queryMetadata")
 
     def update_fields(
