@@ -307,7 +307,7 @@ class Filters:
     ) -> None:
         path = parse(f"$[?(@.expression.*.Property=='{field_old}')].filter")
         for flt in path.find(self.filters):
-            flt = GenericQuery(filter.flt)
+            flt = GenericQuery(flt.value)
             flt.update_fields(
                 table_field_old,
                 table_field_new,
