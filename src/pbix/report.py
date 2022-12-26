@@ -59,7 +59,7 @@ class Report:
             if visual.is_data_visual:
                 visual = Visual.DataVisual(visual)
                 visual.update_fields(old, new)
-                self._update_visual_layout(i, j, visual.layout)
+                self.layout["sections"][i]["visualContainers"][j] = visual.layout
                 self.updated += visual.updated
         # TODO: Currently the below causes report level slicers to break.
         # for page in self.pages:
@@ -75,7 +75,7 @@ class Report:
             if visual.type == "slicer":
                 slicer = Visual.Slicer(visual)
                 slicer.unselect_all_items()
-                self._update_visual_layout(i, j, slicer.layout)
+                self.layout["sections"][i]["visualContainers"][j] = slicer.layout
                 self.updated += slicer.updated
         if self.updated == 0:
             print("No slicers to update")
@@ -135,10 +135,6 @@ class Report:
             visuals = page["visualContainers"]
             for j, visual in enumerate(visuals):
                 yield i, j, Visual.GenericVisual(visual)
-
-    def _update_visual_layout(self, page: int, visual: int, layout: str) -> None:
-        """Updates visual layout with new definition."""
-        self.layout["sections"][page]["visualContainers"][visual] = layout
 
 
 class ReportPage:
