@@ -343,7 +343,7 @@ class GenericQuery:
     ) -> None:
         """Finds usage of an existing field and replaces it with a new specified field."""
         self._cleanup_tables(table_field_old, table_old)
-        table_alias_new = self._find_from_table_alias(table_new)
+        table_alias_new = self._return_from_table_alias(table_new)
         if not table_alias_new:
             table_alias_new = self._generate_table_alias(table_new)
             self._add_prototypequery_table(table_new, table_alias_new)
@@ -357,7 +357,7 @@ class GenericQuery:
         # Table field measures act like ids so update these last
         self._update_select_table_fields(table_field_old, table_field_new)
 
-    def _find_from_table_alias(self, table: str) -> Union[str, None]:
+    def _return_from_table_alias(self, table: str) -> Union[str, None]:
         """Finds if a table is present as a source in the prototypequery object."""
         path = parse(f"$[?(@.Entity=='{table}')].Name")
         node = path.find(self.frm)
@@ -410,7 +410,7 @@ class GenericQuery:
         return [node.value for node in nodes]
 
     def _cleanup_tables(self, table_field_old: str, table_old: str) -> None:
-        table_alias_old = self._find_from_table_alias(table_old)
+        table_alias_old = self._return_from_table_alias(table_old)
         selects = self._return_select_tables(table_field_old)
         wheres = self._return_where_tables(table_alias_old)
         if table_alias_old not in selects and table_alias_old not in wheres:
