@@ -37,7 +37,6 @@ class GenericVisual:
 class DataVisual(GenericVisual):
     """A class representing visuals that depend on a data model."""
 
-    field_path = "$..@[?(@.*=='{field}')].[Property, displayName, Restatement]"
     table_field_path = "$..@[?(@.*=='{table_field}')].[queryRef, Name, queryName]"
 
     def __init__(self, Visual: GenericVisual) -> None:
@@ -74,7 +73,6 @@ class DataVisual(GenericVisual):
         old_table, old_field = old.split(".")
         new_table, new_field = new.split(".")
 
-        field_path = parse(self.field_path.format(field=old_field))
         table_field_path = parse(self.table_field_path.format(table_field=old))
 
         if self.find_field(old):
