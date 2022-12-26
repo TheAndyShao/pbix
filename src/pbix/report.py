@@ -195,18 +195,20 @@ class DataVisual(GenericVisual):
     def __init__(self, Visual: GenericVisual) -> None:
         super().__init__(Visual.layout)
         self.title: Union[str, None] = self._return_visual_title()
-        self.filters: str = VisualFilters(json.loads(self.layout.get("filters")))
-        self.query: Union[object, None] = (
+        self.filters: VisualFilters = VisualFilters(
+            json.loads(self.layout.get("filters"))
+        )
+        self.query: Union[VisualQuery, None] = (
             VisualQuery(json.loads(self.layout.get("query")))
             if "query" in self.layout
             else None
         )
-        self.data_transforms: Union[object, None] = (
+        self.data_transforms: Union[VisualDataTransforms, None] = (
             VisualDataTransforms(json.loads(self.layout.get("dataTransforms")))
             if "dataTransforms" in self.layout
             else None
         )
-        self.config = VisualConfig(self.config)
+        self.config: VisualConfig = VisualConfig(self.config)
         self.visual_options = {
             "config": self.config.config,
             "filters": self.filters.filters,
@@ -259,7 +261,9 @@ class VisualConfig:
     def __init__(self, config: dict[str, object]) -> None:
         self.config = config
         self.single_visual = self.config["singleVisual"]
-        self.prototypequery = GenericVisualQuery(self.single_visual["prototypeQuery"])
+        self.prototypequery: GenericVisualQuery = GenericVisualQuery(
+            self.single_visual["prototypeQuery"]
+        )
 
     def update_fields(
         self,
