@@ -13,7 +13,6 @@ class GenericVisual:
     def __init__(self, layout: dict[str, Any]) -> None:
         self.layout: dict[str, Any] = layout
         self.config: dict[str, Any] = json.loads(self.layout.get("config"))
-        self.title: Union[str, None] = None
         self.type: Union[str, None] = self._return_visual_type()
         non_data_visuals = ["image", "textbox", "shape", "actionButton", None]
         self.is_data_visual: bool = self.type not in non_data_visuals
