@@ -190,6 +190,9 @@ class GenericVisual:
 class DataVisual(GenericVisual):
     """A class representing visuals that depend on a data model."""
 
+    field_path = "$..@[?(@.*=='{field}')].[Property, displayName, Restatement]"
+    table_field_path = "$..@[?(@.*=='{table_field}')].[queryRef, Name, queryName]"
+
     def __init__(self, Visual: GenericVisual) -> None:
         super().__init__(Visual.layout)
         self.title: str = self._return_visual_title()
