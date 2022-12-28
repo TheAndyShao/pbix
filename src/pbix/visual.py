@@ -187,19 +187,36 @@ class DataTransforms:
         field_new: str,
     ) -> None:
         """Replace fields in all relevant datatransforms settings."""
-        self._update_datatransforms_metadata(table_field_old, table_field_new)
-        self._update_datatransforms_selects(table_field_old, table_new)
-        self._update_datatransforms_selects_field(table_field_old, field_new)
-        self._update_query_metadata_filters_table(field_old, table_new)
+        self._update_objects_metadata(table_field_old, table_field_new)
+        self._update_selects(table_field_old, table_new)
+        self._update_selects_field(table_field_old, field_new)
+        self._update_filters_metadata_table(field_old, table_new)
         self._update_query_metadata_filters_property(field_old, field_new)
 
         # Table field measures act like ids so update these last
-        self._update_datatransforms_selects_table_field(
-            table_field_old, table_field_new
-        )
-        self._update_query_meta_data(table_field_old, table_field_new)
+        self._update_selects_table_field(table_field_old, table_field_new)
+        self._update_query_metadata(table_field_old, table_field_new)
 
-    def _update_datatransforms_metadata(
+    def _update_selects(self, table_field_old: str, table_new: str) -> None:
+        """Update table references in selects."""
+        path = parse(
+            f"$.selects[?(@.queryName=='{table_field_old}')].expr.*.Expression.SourceRef.Entity"
+        )
+        path.update(self.data_transforms, table_new)
+
+    def _update_selects_field(self, table_field_old: str, field: str) -> None:
+        """Update field in selects."""
+        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.*.Property")
+        path.update(self.data_transforms, field)
+
+    def _update_selects_table_field(
+        self, table_field_old: str, table_field_new: str
+    ) -> None:
+        """Update table.field in selects."""
+        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].queryName")
+        path.update(self.data_transforms, table_field_new)
+
+    def _update_objects_metadata(
         self, table_field_old: str, table_field_new: str
     ) -> None:
         """Update table references in metadata."""
@@ -208,39 +225,14 @@ class DataTransforms:
         )
         path.update(self.data_transforms, table_field_new)
 
-    def _update_datatransforms_selects(
-        self, table_field_old: str, table_new: str
-    ) -> None:
-        """Update table references in selects."""
-        path = parse(
-            f"$.selects[?(@.queryName=='{table_field_old}')].expr.*.Expression.SourceRef.Entity"
-        )
-        path.update(self.data_transforms, table_new)
-
-    def _update_datatransforms_selects_field(
-        self, table_field_old: str, field: str
-    ) -> None:
-        """Update field in selects."""
-        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.*.Property")
-        path.update(self.data_transforms, field)
-
-    def _update_datatransforms_selects_table_field(
-        self, table_field_old: str, table_field_new: str
-    ) -> None:
-        """Update table.field in selects."""
-        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].queryName")
-        path.update(self.data_transforms, table_field_new)
-
-    def _update_query_meta_data(
+    def _update_query_metadata(
         self, table_field_old: str, table_field_new: str
     ) -> None:
         """Update table.field in query metadata."""
         path = parse(f"$.queryMetadata.Select[?(@.Name=='{table_field_old}')].Name")
         path.update(self.data_transforms, table_field_new)
 
-    def _update_query_metadata_filters_table(
-        self, field_old: str, table_new: str
-    ) -> None:
+    def _update_filters_metadata_table(self, field_old: str, table_new: str) -> None:
         path = parse(
             f"$.Filters[?(@.expression.*.Property=='{field_old}')].expression.*.Expression.SourceRef.Entity"
         )
