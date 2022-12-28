@@ -6,6 +6,8 @@ from typing import Any, Union
 
 from jsonpath_ng.ext import parse
 
+JsonType = dict[str, "JsonType"]
+
 
 class GenericVisual:
     """A base class to represent a generic visual object."""
@@ -149,7 +151,7 @@ class Config:
 class Query:
     """A class representing the query settings of a visual"""
 
-    def __init__(self, visual_query: str) -> None:
+    def __init__(self, visual_query) -> None:
         self.visual_query = visual_query
         self.commands = self.visual_query.get("Commands")
 
@@ -252,7 +254,7 @@ class DataTransforms:
 class Filters:
     """A class representing the filter object of a visual."""
 
-    def __init__(self, filters) -> None:
+    def __init__(self, filters: JsonType) -> None:
         self.filters = filters
 
     def update_fields(
@@ -330,7 +332,7 @@ class SemanticQuery:
     ) -> None:
         """Finds usage of an existing field and replaces it with a new specified field."""
         self._prune_from_tables(table_field_old, table_old)
-        table_alias_new = self._return_from_table_aliases(table_new)
+        table_alias_new = self._return_from_table_alias(table_new)
         if not table_alias_new:
             table_alias_new = self._generate_table_aliases(table_new)
             self._add_prototypequery_table(table_new, table_alias_new)
@@ -344,7 +346,7 @@ class SemanticQuery:
         # Table field measures act like ids so update these last
         self._update_select_table_fields(table_field_old, table_field_new)
 
-    def _return_from_table_aliases(self, table: str) -> Union[str, None]:
+    def _return_from_table_alias(self, table: str) -> Union[str, None]:
         """Finds if a table is present as a source in the prototypequery object."""
         path = parse(f"$[?(@.Entity=='{table}')].Name")
         node = path.find(self.frm)
@@ -397,7 +399,7 @@ class SemanticQuery:
         return [node.value for node in nodes]
 
     def _prune_from_tables(self, table_field_old: str, table_old: str) -> None:
-        table_alias_old = self._return_from_table_aliases(table_old)
+        table_alias_old = self._return_from_table_alias(table_old)
         selects = self._return_select_tables(table_field_old)
         wheres = self._return_where_tables(table_alias_old)
         if table_alias_old not in selects and table_alias_old not in wheres:
