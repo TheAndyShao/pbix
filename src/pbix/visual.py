@@ -132,14 +132,6 @@ class Config:
         path = parse(f"$.projections.*[?(@.queryRef=='{table_field_old}')].queryRef")
         path.update(self.single_visual, table_field_new)
 
-    def _prune_column_properties(
-        self, table_field_old: str, table_field_new: str
-    ) -> None:
-        """Update column properties if necessary."""
-        column_properties = self.single_visual.get("columnProperties", {})
-        if table_field_old in column_properties:
-            column_properties[table_field_new] = column_properties.pop(table_field_old)
-
     def _update_singlevisual_table_fields(
         self, table_field_old: str, table_field_new: str
     ) -> None:
@@ -148,6 +140,14 @@ class Config:
             f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata"
         )
         path.update(self.single_visual, table_field_new)
+
+    def _prune_column_properties(
+        self, table_field_old: str, table_field_new: str
+    ) -> None:
+        """Update column properties if necessary."""
+        column_properties = self.single_visual.get("columnProperties", {})
+        if table_field_old in column_properties:
+            column_properties[table_field_new] = column_properties.pop(table_field_old)
 
 
 class Query:
@@ -269,7 +269,7 @@ class Filters:
         field_new: str,
     ) -> None:
         """Finds usage of an existing field and replaces it with a new specified field."""
-        self._update_filters_semantic_queries(
+        self._update_semantic_queries(
             table_field_old, table_field_new, table_old, table_new, field_old, field_new
         )
         self._update_tables(field_old, table_new)
@@ -287,7 +287,7 @@ class Filters:
         )
         path.update(self.filters, field_new)
 
-    def _update_filters_semantic_queries(
+    def _update_semantic_queries(
         self,
         table_field_old: str,
         table_field_new: str,
@@ -359,6 +359,20 @@ class SemanticQuery:
         nodes = path.find(self.frm)
         return [name.value for name in nodes]
 
+    def _add_from_table(self, table: str, name: str) -> None:
+        """Adds a new table to the prototypequery."""
+        entry = {"Name": name, "Entity": table, "Type": 0}
+        self.frm.append(entry)
+
+    def _prune_from_tables(self, table_field_old: str, table_old: str) -> None:
+        table_alias_old = self._return_from_table_alias(table_old)
+        selects = self._return_select_tables(table_field_old)
+        wheres = self._return_where_tables(table_alias_old)
+        if table_alias_old not in selects and table_alias_old not in wheres:
+            for table in self.frm:
+                if table["Name"] == table_alias_old:
+                    self.frm.remove(table)
+
     def _generate_table_aliases(self, table_new: str) -> str:
         """Returns a new table name alias for additions to the prototypequery."""
         # Power BI reassigns aliases when visual is updated so don't need to replicate exactly
@@ -370,30 +384,21 @@ class SemanticQuery:
             return alias + str(max(names) + 1)
         return alias
 
-    def _prune_from_tables(self, table_field_old: str, table_old: str) -> None:
-        table_alias_old = self._return_from_table_alias(table_old)
-        selects = self._return_select_tables(table_field_old)
-        wheres = self._return_where_tables(table_alias_old)
-        if table_alias_old not in selects and table_alias_old not in wheres:
-            for table in self.frm:
-                if table["Name"] == table_alias_old:
-                    self.frm.remove(table)
-
-    def _add_from_table(self, table: str, name: str) -> None:
-        """Adds a new table to the prototypequery."""
-        entry = {"Name": name, "Entity": table, "Type": 0}
-        self.frm.append(entry)
-
     # 'Select' setting methods
-    def _update_select_fields(self, table_field: str, field: str) -> None:
-        """Updating prototypequery fields."""
-        path = parse(f"$[?(@.Name=='{table_field}')].*.Property")
-        path.update(self.select, field)
+    def _return_select_tables(self, table_field_old: str) -> list[str]:
+        path = parse(f"$[?(@.Name!='{table_field_old}')].*.Expression.SourceRef.Source")
+        nodes = path.find(self.select)
+        return [node.value for node in nodes]
 
     def _update_select_table_aliases(self, table_field: str, name: str) -> None:
         """Updates prototypequery table name alias."""
         path = parse(f"$[?(@.Name=='{table_field}')].*.Expression.SourceRef.Source")
         path.update(self.select, name)
+
+    def _update_select_fields(self, table_field: str, field: str) -> None:
+        """Updating prototypequery fields."""
+        path = parse(f"$[?(@.Name=='{table_field}')].*.Property")
+        path.update(self.select, field)
 
     def _update_select_table_fields(
         self, table_field_old: str, table_field_new: str
@@ -401,11 +406,6 @@ class SemanticQuery:
         """Updating prototypequery table fields."""
         path = parse(f"$[?(@.Name=='{table_field_old}')].Name")
         path.update(self.select, table_field_new)
-
-    def _return_select_tables(self, table_field_old: str) -> list[str]:
-        path = parse(f"$[?(@.Name!='{table_field_old}')].*.Expression.SourceRef.Source")
-        nodes = path.find(self.select)
-        return [node.value for node in nodes]
 
     # 'OrderBy' setting methods
     def _update_orderby_table_aliases(self, field_old: str, alias_new: str) -> None:
@@ -421,6 +421,11 @@ class SemanticQuery:
         path.update(self.order_by, field_new)
 
     # 'Where' setting methods
+    def _return_where_tables(self, alias: str) -> list[str]:
+        path = parse(f"$[?(@..Source!='{alias}')]..Source")
+        nodes = path.find(self.where)
+        return [node.value for node in nodes]
+
     def _update_where_settings(self, field_old: str, field_new: str, name: str) -> None:
         for node in self.where:
             for _, setting in node.items():
@@ -441,11 +446,6 @@ class SemanticQuery:
         path = parse("$..Property")
         if path.find(condition)[0].value == field_old:
             path.update(condition, field_new)
-
-    def _return_where_tables(self, alias: str) -> list[str]:
-        path = parse(f"$[?(@..Source!='{alias}')]..Source")
-        nodes = path.find(self.where)
-        return [node.value for node in nodes]
 
 
 class Slicer(DataVisual):
