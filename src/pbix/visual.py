@@ -116,12 +116,12 @@ class Config:
             table_field_old, table_field_new, table_old, table_new, field_old, field_new
         )
         self._prune_column_properties(table_field_old, table_field_new)
-        self._update_singlevisual_table_field(table_field_old, table_field_new)
+        self._update_singlevisual_table_fields(table_field_old, table_field_new)
 
         # Table field measures act like ids so update these last
-        self._update_projections_table_field(table_field_old, table_field_new)
+        self._update_projections_table_fields(table_field_old, table_field_new)
 
-    def _update_projections_table_field(
+    def _update_projections_table_fields(
         self, table_field_old: str, table_field_new: str
     ) -> None:
         """Updating projections."""
@@ -136,7 +136,7 @@ class Config:
         if table_field_old in column_properties:
             column_properties[table_field_new] = column_properties.pop(table_field_old)
 
-    def _update_singlevisual_table_field(
+    def _update_singlevisual_table_fields(
         self, table_field_old: str, table_field_new: str
     ) -> None:
         """Update single visual."""
@@ -193,12 +193,12 @@ class DataTransforms:
         """Replace fields in all relevant datatransforms settings."""
         self._update_objects_metadata(table_field_old, table_field_new)
         self._update_selects_tables(table_field_old, table_new)
-        self._update_selects_field(table_field_old, field_new)
-        self._update_filters_metadata_table(field_old, table_new)
-        self._update_filters_metadata_field(field_old, field_new)
+        self._update_selects_fields(table_field_old, field_new)
+        self._update_filters_metadata_tables(field_old, table_new)
+        self._update_filters_metadata_fields(field_old, field_new)
 
         # Table field measures act like ids so update these last
-        self._update_selects_table_field(table_field_old, table_field_new)
+        self._update_selects_table_fields(table_field_old, table_field_new)
         self._update_query_metadata_table_fields(table_field_old, table_field_new)
 
     def _update_selects_tables(self, table_field_old: str, table_new: str) -> None:
@@ -208,12 +208,12 @@ class DataTransforms:
         )
         path.update(self.data_transforms, table_new)
 
-    def _update_selects_field(self, table_field_old: str, field: str) -> None:
+    def _update_selects_fields(self, table_field_old: str, field: str) -> None:
         """Update field in selects."""
         path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.*.Property")
         path.update(self.data_transforms, field)
 
-    def _update_selects_table_field(
+    def _update_selects_table_fields(
         self, table_field_old: str, table_field_new: str
     ) -> None:
         """Update table.field in selects."""
@@ -236,13 +236,13 @@ class DataTransforms:
         path = parse(f"$.queryMetadata.Select[?(@.Name=='{table_field_old}')].Name")
         path.update(self.data_transforms, table_field_new)
 
-    def _update_filters_metadata_table(self, field_old: str, table_new: str) -> None:
+    def _update_filters_metadata_tables(self, field_old: str, table_new: str) -> None:
         path = parse(
             f"$.Filters[?(@.expression.*.Property=='{field_old}')].expression.*.Expression.SourceRef.Entity"
         )
         path.update(self.metadata, table_new)
 
-    def _update_filters_metadata_field(self, field_old: str, field_new: str) -> None:
+    def _update_filters_metadata_fields(self, field_old: str, field_new: str) -> None:
         path = parse(
             f"$.Filters[?(@.expression.*.Property=='{field_old}')].expression.*.Property"
         )
@@ -268,16 +268,16 @@ class Filters:
         self._update_filters_semantic_queries(
             table_field_old, table_field_new, table_old, table_new, field_old, field_new
         )
-        self._update_table(field_old, table_new)
-        self._update_field(field_old, field_new)
+        self._update_tables(field_old, table_new)
+        self._update_fields(field_old, field_new)
 
-    def _update_table(self, field_old: str, table_new: str) -> None:
+    def _update_tables(self, field_old: str, table_new: str) -> None:
         path = parse(
             f"$[?(@.expression.*.Property=='{field_old}')].expression.*.Expression.SourceRef.Entity"
         )
         path.update(self.filters, table_new)
 
-    def _update_field(self, field_old: str, field_new: str) -> None:
+    def _update_fields(self, field_old: str, field_new: str) -> None:
         path = parse(
             f"$[?(@.expression.*.Property=='{field_old}')].expression.*.Property"
         )
@@ -330,21 +330,21 @@ class SemanticQuery:
     ) -> None:
         """Finds usage of an existing field and replaces it with a new specified field."""
         self._prune_from_tables(table_field_old, table_old)
-        table_alias_new = self._return_from_table_alias(table_new)
+        table_alias_new = self._return_from_table_aliases(table_new)
         if not table_alias_new:
-            table_alias_new = self._generate_table_alias(table_new)
+            table_alias_new = self._generate_table_aliases(table_new)
             self._add_prototypequery_table(table_new, table_alias_new)
-        self._update_select_table_alias(table_field_old, table_alias_new)
+        self._update_select_table_aliases(table_field_old, table_alias_new)
         self._update_select_fields(table_field_old, field_new)
-        self._update_orderby_table_alias(field_old, table_alias_new)
-        self._update_orderby_field(field_old, field_new)
+        self._update_orderby_table_aliases(field_old, table_alias_new)
+        self._update_orderby_fields(field_old, field_new)
         if self.where:
             self._update_where_settings(field_old, field_new, table_alias_new)
 
         # Table field measures act like ids so update these last
         self._update_select_table_fields(table_field_old, table_field_new)
 
-    def _return_from_table_alias(self, table: str) -> Union[str, None]:
+    def _return_from_table_aliases(self, table: str) -> Union[str, None]:
         """Finds if a table is present as a source in the prototypequery object."""
         path = parse(f"$[?(@.Entity=='{table}')].Name")
         node = path.find(self.frm)
@@ -358,7 +358,7 @@ class SemanticQuery:
         nodes = path.find(self.frm)
         return [name.value for name in nodes]
 
-    def _generate_table_alias(self, table_new: str) -> str:
+    def _generate_table_aliases(self, table_new: str) -> str:
         """Returns a new table name alias for additions to the prototypequery."""
         # Power BI reassigns aliases when visual is updated so don't need to replicate exactly
         alias = table_new[:1].lower()
@@ -379,7 +379,7 @@ class SemanticQuery:
         path = parse(f"$[?(@.Name=='{table_field}')].*.Property")
         path.update(self.select, field)
 
-    def _update_select_table_alias(self, table_field: str, name: str) -> None:
+    def _update_select_table_aliases(self, table_field: str, name: str) -> None:
         """Updates prototypequery table name alias."""
         path = parse(f"$[?(@.Name=='{table_field}')].*.Expression.SourceRef.Source")
         path.update(self.select, name)
@@ -397,7 +397,7 @@ class SemanticQuery:
         return [node.value for node in nodes]
 
     def _prune_from_tables(self, table_field_old: str, table_old: str) -> None:
-        table_alias_old = self._return_from_table_alias(table_old)
+        table_alias_old = self._return_from_table_aliases(table_old)
         selects = self._return_select_tables(table_field_old)
         wheres = self._return_where_tables(table_alias_old)
         if table_alias_old not in selects and table_alias_old not in wheres:
@@ -405,13 +405,13 @@ class SemanticQuery:
                 if table["Name"] == table_alias_old:
                     self.frm.remove(table)
 
-    def _update_orderby_table_alias(self, field_old: str, alias_new: str) -> None:
+    def _update_orderby_table_aliases(self, field_old: str, alias_new: str) -> None:
         path = parse(
             f"$[?(@.Expression.*.Property=='{field_old}')].Expression.*.Expression.SourceRef.Source"
         )
         path.update(self.order_by, alias_new)
 
-    def _update_orderby_field(self, field_old: str, field_new: str) -> None:
+    def _update_orderby_fields(self, field_old: str, field_new: str) -> None:
         path = parse(
             f"$[?(@.Expression.*.Property=='{field_old}')].Expression.*.Property"
         )
@@ -420,10 +420,10 @@ class SemanticQuery:
     def _update_where_settings(self, field_old: str, field_new: str, name: str) -> None:
         for node in self.where:
             for _, setting in node.items():
-                self._update_where_table_alias(field_old, name, setting)
-                self._update_where_field(field_old, field_new, setting)
+                self._update_where_table_aliases(field_old, name, setting)
+                self._update_where_fields(field_old, field_new, setting)
 
-    def _update_where_table_alias(
+    def _update_where_table_aliases(
         self, field_old: str, name: str, condition: str
     ) -> None:
         path = parse("$..Property")
@@ -431,7 +431,7 @@ class SemanticQuery:
             path = parse("$..Source")
             path.update(condition, name)
 
-    def _update_where_field(
+    def _update_where_fields(
         self, field_old: str, field_new: str, condition: str
     ) -> None:
         path = parse("$..Property")
