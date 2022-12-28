@@ -331,7 +331,7 @@ class SemanticQuery:
         table_alias_new = self._return_from_table_alias(table_new)
         if not table_alias_new:
             table_alias_new = self._generate_table_aliases(table_new)
-            self._add_prototypequery_table(table_new, table_alias_new)
+            self._add_from_table(table_new, table_alias_new)
         self._update_select_table_aliases(table_field_old, table_alias_new)
         self._update_select_fields(table_field_old, field_new)
         self._update_orderby_table_aliases(field_old, table_alias_new)
@@ -342,6 +342,7 @@ class SemanticQuery:
         # Table field measures act like ids so update these last
         self._update_select_table_fields(table_field_old, table_field_new)
 
+    # 'From' setting methods
     def _return_from_table_alias(self, table: str) -> Union[str, None]:
         """Finds if a table is present as a source in the prototypequery object."""
         path = parse(f"$[?(@.Entity=='{table}')].Name")
@@ -367,11 +368,21 @@ class SemanticQuery:
             return alias + str(max(names) + 1)
         return alias
 
-    def _add_prototypequery_table(self, table: str, name: str) -> None:
+    def _prune_from_tables(self, table_field_old: str, table_old: str) -> None:
+        table_alias_old = self._return_from_table_alias(table_old)
+        selects = self._return_select_tables(table_field_old)
+        wheres = self._return_where_tables(table_alias_old)
+        if table_alias_old not in selects and table_alias_old not in wheres:
+            for table in self.frm:
+                if table["Name"] == table_alias_old:
+                    self.frm.remove(table)
+
+    def _add_from_table(self, table: str, name: str) -> None:
         """Adds a new table to the prototypequery."""
         entry = {"Name": name, "Entity": table, "Type": 0}
         self.frm.append(entry)
 
+    # 'Select' setting methods
     def _update_select_fields(self, table_field: str, field: str) -> None:
         """Updating prototypequery fields."""
         path = parse(f"$[?(@.Name=='{table_field}')].*.Property")
@@ -394,15 +405,7 @@ class SemanticQuery:
         nodes = path.find(self.select)
         return [node.value for node in nodes]
 
-    def _prune_from_tables(self, table_field_old: str, table_old: str) -> None:
-        table_alias_old = self._return_from_table_alias(table_old)
-        selects = self._return_select_tables(table_field_old)
-        wheres = self._return_where_tables(table_alias_old)
-        if table_alias_old not in selects and table_alias_old not in wheres:
-            for table in self.frm:
-                if table["Name"] == table_alias_old:
-                    self.frm.remove(table)
-
+    # 'OrderBy' setting methods
     def _update_orderby_table_aliases(self, field_old: str, alias_new: str) -> None:
         path = parse(
             f"$[?(@.Expression.*.Property=='{field_old}')].Expression.*.Expression.SourceRef.Source"
@@ -415,6 +418,7 @@ class SemanticQuery:
         )
         path.update(self.order_by, field_new)
 
+    # 'Where' setting methods
     def _update_where_settings(self, field_old: str, field_new: str, name: str) -> None:
         for node in self.where:
             for _, setting in node.items():
