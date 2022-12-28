@@ -8,7 +8,7 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=["jsonpath-ng"],
-    version="1.0",
+    version="1.0.0",
     license="MIT",
     description="Utilities for working with PBIX files",
 )
