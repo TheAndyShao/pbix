@@ -12,7 +12,7 @@ class GenericVisual:
 
     def __init__(self, layout: dict[str, Any]) -> None:
         self.layout: dict[str, Any] = layout
-        self.config: dict[str, Any] = json.loads(self.layout.get("config"))
+        self.config: dict[str, Any] = json.loads(self.layout.get("config"))  # type: ignore
         self.type: Union[str, None] = self._return_visual_type()
         non_data_visuals = ["image", "textbox", "shape", "actionButton", None]
         self.is_data_visual: bool = self.type not in non_data_visuals
@@ -39,14 +39,14 @@ class DataVisual(GenericVisual):
     def __init__(self, layout: dict[str, Any]) -> None:
         super().__init__(layout)
         self.title: Union[str, None] = self._return_visual_title()
-        self.filters: Filters = Filters(json.loads(self.layout.get("filters")))
+        self.filters: Filters = Filters(json.loads(self.layout.get("filters")))  # type: ignore
         self.query: Union[Query, None] = (
-            Query(json.loads(self.layout.get("query")))
+            Query(json.loads(self.layout.get("query")))  # type: ignore
             if "query" in self.layout
             else None
         )
         self.data_transforms: Union[DataTransforms, None] = (
-            DataTransforms(json.loads(self.layout.get("dataTransforms")))
+            DataTransforms(json.loads(self.layout.get("dataTransforms")))  # type: ignore
             if "dataTransforms" in self.layout
             else None
         )
