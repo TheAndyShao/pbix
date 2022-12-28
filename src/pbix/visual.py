@@ -62,12 +62,19 @@ class DataVisual(GenericVisual):
             else None,
         }
 
+    def find_field(self, table_field: str) -> bool:
+        """Find if a field is used in the visual"""
+        table_measure_path = parse(
+            f"$..@[?(@.*=='{table_field}')].[queryRef, Name, queryName]"
+        )
+        return any(table_measure_path.find(v) for v in self.visual_options.values())
+
     def update_fields(self, old: str, new: str) -> None:
         """Searches for relevant keys for fields and updates their value pairs."""
         table_old, field_old = old.split(".")
         table_new, field_new = new.split(".")
 
-        if self.config.find_field(old):
+        if self.find_field(old):
             self.config.update_fields(
                 old, new, table_old, table_new, field_old, field_new
             )
@@ -98,11 +105,6 @@ class Config:
         self.prototypequery: SemanticQuery = SemanticQuery(
             self.single_visual["prototypeQuery"]
         )
-
-    def find_field(self, table_field: str):
-        """Find ocurrences of a specified field."""
-        path = parse(f"$..@[?(@.[queryRef, Name, queryName]=='{table_field}')]")
-        return path.find(self.single_visual)
 
     def update_fields(
         self,
