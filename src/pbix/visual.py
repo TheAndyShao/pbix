@@ -134,7 +134,7 @@ class Config:
         self, table_field_old: str, table_field_new: str
     ) -> None:
         """Update column properties if necessary."""
-        column_properties = self.single_visual.get("columnProperties", [])
+        column_properties = self.single_visual.get("columnProperties", {})
         if table_field_old in column_properties:
             column_properties[table_field_new] = column_properties.pop(table_field_old)
 
