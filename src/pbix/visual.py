@@ -62,23 +62,23 @@ class DataVisual(GenericVisual):
 
     def update_fields(self, old: str, new: str) -> None:
         """Searches for relevant keys for fields and updates their value pairs."""
-        old_table, old_field = old.split(".")
-        new_table, new_field = new.split(".")
+        table_old, field_old = old.split(".")
+        table_new, field_new = new.split(".")
 
         if self.config.find_field(old):
             self.config.update_fields(
-                old, new, old_table, new_table, old_field, new_field
+                old, new, table_old, table_new, field_old, field_new
             )
             if self.data_transforms:
                 self.data_transforms.update_fields(
-                    old, new, new_table, old_field, new_field
+                    old, new, table_new, field_old, field_new
                 )
             if self.query:
                 self.query.update_fields(
-                    old, new, old_table, new_table, old_field, new_field
+                    old, new, table_old, table_new, field_old, field_new
                 )
             self.filters.update_fields(
-                old, new, old_table, new_table, old_field, new_field
+                old, new, table_old, table_new, field_old, field_new
             )
             for option, value in self.visual_options.items():
                 if value:
