@@ -93,7 +93,7 @@ class Config:
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.single_visual = self.config["singleVisual"]
-        self.prototypequery: GenericQuery = GenericQuery(
+        self.prototypequery: SemanticQuery = SemanticQuery(
             self.single_visual["prototypeQuery"]
         )
 
@@ -160,7 +160,7 @@ class Query:
     ) -> None:
         """Replace field in all relevant query settings."""
         for command in self.commands:
-            query = GenericQuery(command["SemanticQueryDataShapeCommand"]["Query"])
+            query = SemanticQuery(command["SemanticQueryDataShapeCommand"]["Query"])
             query.update_fields(
                 table_field_old,
                 table_field_new,
@@ -292,7 +292,7 @@ class Filters:
     ) -> None:
         path = parse(f"$[?(@.expression.*.Property=='{field_old}')].filter")
         for flt in path.find(self.filters):
-            flt = GenericQuery(flt.value)
+            flt = SemanticQuery(flt.value)
             flt.update_fields(
                 table_field_old,
                 table_field_new,
@@ -307,7 +307,7 @@ class Filters:
             flt.pop("filter", None)
 
 
-class GenericQuery:
+class SemanticQuery:
     """A class representing a query object used by visuals to query the associated data model."""
 
     def __init__(self, query) -> None:
