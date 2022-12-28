@@ -101,7 +101,8 @@ class Report:
     def write_json_layout(self) -> None:
         """Write the cleaned JSON object to file."""
         with open("layout.json", "w", encoding="utf-16") as outfile:
-            json.dump(self.layout_full_json, outfile)
+            layout = self._read_full_json_layout()
+            json.dump(layout, outfile)
 
     def _read_layout(self, filepath: str) -> dict[str, Any]:
         """Return a JSON object of the layout file within the PBIX file."""
