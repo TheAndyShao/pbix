@@ -198,6 +198,7 @@ class DataTransforms:
         self._update_objects_metadata(table_field_old, table_field_new)
         self._update_selects_tables(table_field_old, table_new)
         self._update_selects_fields(table_field_old, field_new)
+        self._update_selects_display_names(table_field_old, field_old, field_new)
         self._update_filters_metadata_tables(field_old, table_new)
         self._update_filters_metadata_fields(field_old, field_new)
 
@@ -216,6 +217,15 @@ class DataTransforms:
         """Update field in selects."""
         path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.*.Property")
         path.update(self.data_transforms, field)
+
+    def _update_selects_display_names(
+        self, table_field_old: str, field_old: str, field_new: str
+    ) -> None:
+        """Updates display name if no custom display name is found."""
+        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].displayName")
+        node = path.find(self.data_transforms)
+        if node[0].value == field_old:
+            path.update(self.data_transforms, field_new)
 
     def _update_selects_table_fields(
         self, table_field_old: str, table_field_new: str
