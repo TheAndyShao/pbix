@@ -306,10 +306,6 @@ class Filters:
                 field_new,
             )
 
-    def _clear_filters(self) -> None:
-        for flt in self.filters:
-            flt.pop("filter", None)
-
 
 class SemanticQuery:
     """A class representing a query object used by visuals to query the associated data model."""
