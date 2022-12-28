@@ -36,8 +36,6 @@ class GenericVisual:
 class DataVisual(GenericVisual):
     """A class representing visuals that depend on a data model."""
 
-    table_field_path = "$..@[?(@.*=='{table_field}')].[queryRef, Name, queryName]"
-
     def __init__(self, layout: dict[str, Any]) -> None:
         super().__init__(layout)
         self.title: Union[str, None] = self._return_visual_title()
@@ -62,19 +60,12 @@ class DataVisual(GenericVisual):
             else None,
         }
 
-    def find_field(self, table_field: str) -> bool:
-        """Find if a field is used in the visual"""
-        path = parse(self.table_field_path.format(table_field=table_field))
-        return any(path.find(v) for v in self.visual_options.values())
-
     def update_fields(self, old: str, new: str) -> None:
         """Searches for relevant keys for fields and updates their value pairs."""
         old_table, old_field = old.split(".")
         new_table, new_field = new.split(".")
 
-        table_field_path = parse(self.table_field_path.format(table_field=old))
-
-        if self.find_field(old):
+        if self.config.find_field(old):
             self.config.update_fields(
                 old, new, old_table, new_table, old_field, new_field
             )
@@ -144,6 +135,11 @@ class Config:
             f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata"
         )
         path.update(self.single_visual, table_field_new)
+
+    def find_field(self, table_field: str):
+        """Find ocurrences of a specified field."""
+        path = parse(f"$..@[?(@.[queryRef, Name, queryName]=='{table_field}')]")
+        return path.find(self.single_visual)
 
 
 class Query:
