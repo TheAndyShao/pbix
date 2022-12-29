@@ -80,7 +80,7 @@ class DataVisual(GenericVisual):
             )
             if self.data_transforms:
                 self.data_transforms.update_fields(
-                    old, new, table_new, field_old, field_new
+                    old, new, table_old, table_new, field_old, field_new
                 )
             if self.query:
                 self.query.update_fields(
@@ -102,6 +102,8 @@ class Config:
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.single_visual = self.config["singleVisual"]
+        self.objects = self.single_visual.get("objects")
+        self.datapoint = self.objects.get("dataPoint")
         self.prototypequery: SemanticQuery = SemanticQuery(
             self.single_visual["prototypeQuery"]
         )
@@ -120,6 +122,7 @@ class Config:
             table_field_old, table_field_new, table_old, table_new, field_old, field_new
         )
         self._prune_column_properties(table_field_old, table_field_new)
+        self._update_object_datapoints(table_old, table_new, field_old, field_new)
         self._update_singlevisual_table_fields(table_field_old, table_field_new)
 
         # Table field measures act like ids so update these last
@@ -140,6 +143,22 @@ class Config:
             f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata"
         )
         path.update(self.single_visual, table_field_new)
+
+    def _update_object_datapoints(
+        self, table_old: str, table_new: str, field_old: str, field_new: str
+    ) -> None:
+        root_path = "$..@[?(@.Property=='{field_old}')]"
+        path = parse(root_path.format(field_old=field_old))
+        nodes = path.find(self.datapoint)
+        for node in nodes:
+            if node.value.get("Expression").get("SourceRef").get("Entity") == table_old:
+                field_path = parse(root_path.format(field_old=field_old) + ".Property")
+                field_path.update(node, field_new)
+                table_path = parse(
+                    root_path.format(field_old=field_new)
+                    + ".Expression.SourceRef.Entity"
+                )
+                table_path.update(node, table_new)
 
     def _prune_column_properties(
         self, table_field_old: str, table_field_new: str
@@ -185,17 +204,21 @@ class DataTransforms:
     def __init__(self, data_transforms: dict[str, Any]) -> None:
         self.data_transforms: dict[str, Any] = data_transforms
         self.metadata = self.data_transforms.get("queryMetadata")
+        self.objects = self.data_transforms.get("objects")
+        self.datapoint = self.objects.get("dataPoint")
 
     def update_fields(
         self,
         table_field_old: str,
         table_field_new: str,
+        table_old: str,
         table_new: str,
         field_old: str,
         field_new: str,
     ) -> None:
         """Replace fields in all relevant datatransforms settings."""
         self._update_objects_metadata(table_field_old, table_field_new)
+        self._update_object_datapoints(table_old, table_new, field_old, field_new)
         self._update_selects_tables(table_field_old, table_new)
         self._update_selects_fields(table_field_old, field_new)
         self._update_selects_display_names(table_field_old, field_old, field_new)
@@ -242,6 +265,22 @@ class DataTransforms:
             f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata"
         )
         path.update(self.data_transforms, table_field_new)
+
+    def _update_object_datapoints(
+        self, table_old: str, table_new: str, field_old: str, field_new: str
+    ) -> None:
+        root_path = "$..@[?(@.Property=='{field_old}')]"
+        path = parse(root_path.format(field_old=field_old))
+        nodes = path.find(self.datapoint)
+        for node in nodes:
+            if node.value.get("Expression").get("SourceRef").get("Entity") == table_old:
+                field_path = parse(root_path.format(field_old=field_old) + ".Property")
+                field_path.update(node, field_new)
+                table_path = parse(
+                    root_path.format(field_old=field_new)
+                    + ".Expression.SourceRef.Entity"
+                )
+                table_path.update(node, table_new)
 
     def _update_query_metadata_table_fields(
         self, table_field_old: str, table_field_new: str
