@@ -3,11 +3,13 @@
 import json
 import os
 import zipfile as zf
-from typing import Any, Iterable
+from typing import Any, Iterable, Union
 
 from jsonpath_ng.ext import parse
 
 from pbix import visual as Visual
+
+JsonType = dict[str, Union[list["JsonType"], "JsonType"]]
 
 
 class Report:
@@ -17,6 +19,8 @@ class Report:
         self.filepath: str = filepath
         self.filename: str = os.path.basename(filepath)
         self.layout: dict[str, Any] = self._read_layout(filepath)
+        self.config: JsonType = json.loads(self.layout.get("config"))
+        self.bookmarks: list[JsonType] = self.config.get("bookmarks", {})
         self.layout_full_json: dict[str, Any] = self._read_full_json_layout()
         self.field_set: set[str] = self.get_all_fields()
         # self.pages = self.layout.get('sections')
@@ -61,6 +65,12 @@ class Report:
                 visual.update_fields(old, new)
                 self.layout["sections"][i]["visualContainers"][j] = visual.layout
                 self.updated += visual.updated
+        for i, bookmark in enumerate(self.bookmarks):
+            bookmark = Bookmark(bookmark)
+            bookmark.update_fields(old, new)
+            self.bookmarks[i] = bookmark.bookmark
+        self.config["bookmarks"] = self.bookmarks
+        self.layout["config"] = json.dumps(self.config)
         # TODO: Currently the below causes report level slicers to break.
         # for page in self.pages:
         #     page = ReportPage(page)
@@ -162,3 +172,33 @@ class ReportPage:
         )
 
         self.page["filters"] = self.filters.filters
+
+
+class Bookmark:
+    """A class representing the bookmark settings of a report."""
+
+    def __init__(self, bookmark: JsonType) -> None:
+        self.bookmark: JsonType = bookmark
+        self.name = bookmark.get("displayName")
+
+    def update_fields(self, table_field_old: str, table_field_new: str) -> None:
+        """Finds old references to old field and replacements with new field."""
+        table_old, field_old = table_field_old.split(".")
+        table_new, field_new = table_field_new.split(".")
+        self._update_fields(table_old, table_new, field_old, field_new)
+
+    def _update_fields(
+        self, table_old: str, table_new: str, field_old: str, field_new: str
+    ) -> None:
+        root_path = "$..@[?(@.Property=='{field_old}')]"
+        path = parse(root_path.format(field_old=field_old))
+        nodes = path.find(self.bookmark)
+        for node in nodes:
+            if node.value.get("Expression").get("SourceRef").get("Entity") == table_old:
+                field_path = parse(root_path.format(field_old=field_old) + ".Property")
+                field_path.update(node, field_new)
+                table_path = parse(
+                    root_path.format(field_old=field_new)
+                    + ".Expression.SourceRef.Entity"
+                )
+                table_path.update(node, table_new)
