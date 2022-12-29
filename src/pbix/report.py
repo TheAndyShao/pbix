@@ -21,40 +21,8 @@ class Report:
         self.layout: dict[str, Any] = self._read_layout(filepath)
         self.config: JsonType = json.loads(self.layout.get("config"))
         self.bookmarks: list[JsonType] = self.config.get("bookmarks", {})
-        self.layout_full_json: dict[str, Any] = self._read_full_json_layout()
-        self.field_set: set[str] = self.get_all_fields()
         # self.pages = self.layout.get('sections')
         self.updated: int = 0
-
-    def get_all_fields(self) -> set[str]:
-        """Get a list of used fields in the pbix file."""
-        filter_path = parse(
-            "$.sections[*].visualContainers[*].filters[*].expression.Measure.Property"
-        )
-        field_path = parse(
-            "$.sections[*].visualContainers[*].config.singleVisual.projections[*].*.[*].queryRef"
-        )
-
-        filter_set = set(
-            [match.value for match in filter_path.find(self.layout_full_json)]
-        )
-        measure_set = set(
-            [match.value for match in field_path.find(self.layout_full_json)]
-        )
-        return filter_set.union(measure_set)
-
-    def find_instances(self, fields: list[str]) -> dict[str, bool]:
-        """Compare input fields with the fields used in the pbix file."""
-        matches = {}
-        for field in fields:
-            if "." in field:
-                field_set = self.field_set
-            else:
-                field_set = [measure.split(".")[-1] for measure in self.field_set]
-
-            if field in field_set:
-                matches[field] = True
-        return matches
 
     def update_fields(self, old: str, new: str) -> None:
         """Iterates through pages and visuals in a pbix and replaces specified measure/column."""
@@ -111,7 +79,7 @@ class Report:
     def write_json_layout(self) -> None:
         """Write the cleaned JSON object to file."""
         with open("layout.json", "w", encoding="utf-16") as outfile:
-            layout = self._read_full_json_layout()
+            layout = self._return_full_json_layout()
             json.dump(layout, outfile)
 
     def _read_layout(self, filepath: str) -> dict[str, Any]:
@@ -120,7 +88,7 @@ class Report:
             string = zip_file.read("Report/Layout").decode("utf-16")
             return json.loads(string)
 
-    def _read_full_json_layout(self) -> dict[str, Any]:
+    def _return_full_json_layout(self) -> dict[str, Any]:
         """Return a fully JSONified object of the layout file within the PBIX file."""
         string = json.dumps(self.layout)
         string = self._unescape_json_string(string)
