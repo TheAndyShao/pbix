@@ -48,7 +48,7 @@ class Report:
         #     page.update_fields(old, new)
         #     self.updated += page.updated
         if self.updated == 0:
-            print("No fields to update")
+            print(f"No fields to update: {self.filename}")
 
     def update_slicers(self) -> None:
         """Iterates through pages and genric visuals and updates slicers."""
@@ -58,7 +58,7 @@ class Report:
                 slicer.unselect_all_items()
                 self.updated += slicer.updated
         if self.updated == 0:
-            print("No slicers to update")
+            print(f"No slicers to update: {self.filename}")
 
     def write_file(self) -> None:
         """Writes the pbix json to file."""
