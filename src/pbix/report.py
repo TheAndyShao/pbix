@@ -24,6 +24,12 @@ class Report:
         # self.pages = self.layout.get('sections')
         self.updated: int = 0
 
+    def find_field(self, table_field):
+        """Find if field is used in report."""
+        path = parse(f"$..@[?(@.*=='{table_field}')]")
+        layout = self._return_full_json_layout()
+        return path.find(layout)
+
     def update_fields(self, old: str, new: str) -> None:
         """Iterates through pages and visuals in a pbix and replaces specified measure/column."""
         print(f"Updating: {self.filename}")
