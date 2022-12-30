@@ -33,18 +33,15 @@ class Report:
     def update_fields(self, old: str, new: str) -> None:
         """Iterates through pages and visuals in a pbix and replaces specified measure/column."""
         print(f"Updating: {self.filename}")
-        for i, j, visual in self._generic_visuals_generator():
+        for visual in self._generic_visuals_generator():
             if visual.is_data_visual:
                 visual = Visual.DataVisual(visual.layout)
                 visual.update_fields(old, new)
-                self.layout["sections"][i]["visualContainers"][j] = visual.layout
                 self.updated += visual.updated
-        for i, bookmark in enumerate(self.bookmarks):
+        for bookmark in self.bookmarks:
             bookmark = Bookmark(bookmark)
             bookmark.update_fields(old, new)
-            self.bookmarks[i] = bookmark.bookmark
-        self.config["bookmarks"] = self.bookmarks
-        self.layout["config"] = json.dumps(self.config)
+        self.config = json.dumps(self.config)
         # TODO: Currently the below causes report level slicers to break.
         # for page in self.pages:
         #     page = ReportPage(page)
@@ -55,11 +52,10 @@ class Report:
 
     def update_slicers(self) -> None:
         """Iterates through pages and genric visuals and updates slicers."""
-        for i, j, visual in self._generic_visuals_generator():
+        for visual in self._generic_visuals_generator():
             if visual.type == "slicer":
-                slicer = Visual.Slicer(visual)
+                slicer = Visual.Slicer(visual.layout)
                 slicer.unselect_all_items()
-                self.layout["sections"][i]["visualContainers"][j] = slicer.layout
                 self.updated += slicer.updated
         if self.updated == 0:
             print("No slicers to update")
@@ -82,8 +78,13 @@ class Report:
         os.remove(self.filepath)
         os.rename(temp_filepath, self.filepath)
 
+    def write_layout(self) -> None:
+        """Write the JSON layout object to file."""
+        with open("layout.json", "w", encoding="utf-16") as outfile:
+            json.dump(self.layout, outfile)
+
     def write_json_layout(self) -> None:
-        """Write the cleaned JSON object to file."""
+        """Write the cleaned JSON layout object to file."""
         with open("layout.json", "w", encoding="utf-16") as outfile:
             layout = self._return_full_json_layout()
             json.dump(layout, outfile)
@@ -99,6 +100,13 @@ class Report:
         string = json.dumps(self.layout)
         string = self._unescape_json_string(string)
         return json.loads(string)
+
+    def _generic_visuals_generator(self) -> Iterable:
+        """Generator for iterating through all visuals in a file."""
+        for page in self.layout["sections"]:
+            visuals = page["visualContainers"]
+            for visual in visuals:
+                yield Visual.GenericVisual(visual)
 
     @staticmethod
     def _unescape_json_string(string: str):
@@ -117,13 +125,6 @@ class Report:
         for original, replacement in replacements.items():
             string = string.replace(original, replacement)
         return string
-
-    def _generic_visuals_generator(self) -> Iterable:
-        """Generator for iterating through all visuals in a file."""
-        for i, page in enumerate(self.layout["sections"]):
-            visuals = page["visualContainers"]
-            for j, visual in enumerate(visuals):
-                yield i, j, Visual.GenericVisual(visual)
 
 
 class ReportPage:
@@ -144,8 +145,6 @@ class ReportPage:
         self.filters.update_fields(
             table_field_old, table_field_new, table_old, table_new, field_old, field_new
         )
-
-        self.page["filters"] = self.filters.filters
 
 
 class Bookmark:
