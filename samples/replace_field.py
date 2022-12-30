@@ -38,7 +38,7 @@ def main(path, old, new, model):
 
 if __name__ == "__main__":
     # Update these variables
-    path = "Path to file or parent directory"
+    path = r"Path to file or parent directory"
     old = "Table.Measure"
     new = "Table.Measure"
     model = "Model.pbix"
