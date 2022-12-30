@@ -52,6 +52,7 @@ class Report:
 
     def update_slicers(self) -> None:
         """Iterates through pages and genric visuals and updates slicers."""
+        print(f"Updating: {self.filename}")
         for visual in self._generic_visuals_generator():
             if visual.type == "slicer":
                 slicer = Visual.Slicer(visual.layout)
