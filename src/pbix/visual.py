@@ -1,4 +1,4 @@
-"""A module providing tools for manipulating thin Power BI reports"""
+"""A module providing tools for manipulating visual elements within a Power BI Report."""
 
 import json
 import re
