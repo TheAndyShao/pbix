@@ -506,9 +506,10 @@ class Slicer(DataVisual):
             "$.singleVisual.objects.data[*].properties.isInvertedSelectionMode.`parent`"
         )
         selection_path = parse("$.singleVisual.objects.general[*].properties.filter")
-        slicer = slicer_path.find(self.config)
-        if slicer and not selection_path.find(self.config):
+        slicer = slicer_path.find(self.config.config)
+        selection = selection_path.find(self.config.config)
+        if slicer and not selection:
             slicer[0].value.pop("isInvertedSelectionMode")
-            self.layout["config"] = json.dumps(self.config)
+            self.layout["config"] = json.dumps(self.config.config)
             self.updated = 1
-            print(f"Updated: {self.title}")
+            print(f"Updated: {self.title if self.title else 'Untitled Slicer'}")
