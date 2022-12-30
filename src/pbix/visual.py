@@ -502,12 +502,10 @@ class Slicer(DataVisual):
 
     def unselect_all_items(self) -> None:
         """Unselects all slicer members where no default selection is defined"""
-        slicer_path = parse(
-            "$.singleVisual.objects.data[*].properties.isInvertedSelectionMode.`parent`"
-        )
-        selection_path = parse("$.singleVisual.objects.general[*].properties.filter")
-        slicer = slicer_path.find(self.config.config)
-        selection = selection_path.find(self.config.config)
+        slicer_path = parse("$.data[*].properties.isInvertedSelectionMode.`parent`")
+        selection_path = parse("$.general[*].properties.filter")
+        slicer = slicer_path.find(self.config.objects)
+        selection = selection_path.find(self.config.objects)
         if slicer and not selection:
             slicer[0].value.pop("isInvertedSelectionMode")
             self.layout["config"] = json.dumps(self.config.config)
