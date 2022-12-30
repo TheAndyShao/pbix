@@ -103,8 +103,8 @@ class Report:
 
     def _generic_visuals_generator(self) -> Iterable:
         """Generator for iterating through all visuals in a file."""
-        for page in self.layout["sections"]:
-            visuals = page["visualContainers"]
+        for page in self.layout.get("sections"):
+            visuals = page.get("visualContainers")
             for visual in visuals:
                 yield Visual.GenericVisual(visual)
 

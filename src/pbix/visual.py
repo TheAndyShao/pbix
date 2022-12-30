@@ -108,11 +108,11 @@ class Config:
 
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
-        self.single_visual = self.config["singleVisual"]
-        self.objects = self.single_visual.get("objects")
-        self.datapoint = self.objects.get("dataPoint")
+        self.single_visual = self.config.get("singleVisual")
+        self.objects = self.single_visual.get("objects", {})
+        self.datapoint = self.objects.get("dataPoint", {})
         self.prototypequery: SemanticQuery = SemanticQuery(
-            self.single_visual["prototypeQuery"]
+            self.single_visual.get("prototypeQuery")
         )
 
     def update_fields(
@@ -194,7 +194,9 @@ class Query:
     ) -> None:
         """Replace field in all relevant query settings."""
         for command in self.commands:
-            query = SemanticQuery(command["SemanticQueryDataShapeCommand"]["Query"])
+            query = SemanticQuery(
+                command.get("SemanticQueryDataShapeCommand").get("Query")
+            )
             query.update_fields(
                 table_field_old,
                 table_field_new,
@@ -210,8 +212,8 @@ class DataTransforms:
 
     def __init__(self, data_transforms: dict[str, Any]) -> None:
         self.data_transforms: dict[str, Any] = data_transforms
-        self.metadata = self.data_transforms.get("queryMetadata")
-        self.objects = self.data_transforms.get("objects")
+        self.metadata = self.data_transforms.get("queryMetadata", {})
+        self.objects = self.data_transforms.get("objects", {})
         self.datapoint = self.objects.get("dataPoint")
 
     def update_fields(
