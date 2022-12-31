@@ -39,7 +39,7 @@ def main(path, model):
 
 if __name__ == "__main__":
     # Update these variables
-    path = r"/Users/andyshao/My Files/Diageo/Europe/cpd_powerbi/pbi/CPD"
+    path = r"Path to file or parent directory"
     model = "Model.pbix"
 
     main(path, model)
