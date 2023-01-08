@@ -3,11 +3,13 @@
 import json
 import os
 import zipfile as zf
-from typing import Any, Iterable
+from typing import Any, Iterable, Union
 
 from jsonpath_ng.ext import parse
 
 from pbix import visual as Visual
+
+JsonType = dict[str, Union[list["JsonType"], "JsonType"]]
 
 
 class Report:
@@ -17,68 +19,47 @@ class Report:
         self.filepath: str = filepath
         self.filename: str = os.path.basename(filepath)
         self.layout: dict[str, Any] = self._read_layout(filepath)
-        self.layout_full_json: dict[str, Any] = self._read_full_json_layout()
-        self.field_set: set[str] = self.get_all_fields()
+        self.config: JsonType = json.loads(self.layout.get("config"))
+        self.bookmarks: list[JsonType] = self.config.get("bookmarks", {})
         # self.pages = self.layout.get('sections')
         self.updated: int = 0
 
-    def get_all_fields(self) -> set[str]:
-        """Get a list of used fields in the pbix file."""
-        filter_path = parse(
-            "$.sections[*].visualContainers[*].filters[*].expression.Measure.Property"
-        )
-        field_path = parse(
-            "$.sections[*].visualContainers[*].config.singleVisual.projections[*].*.[*].queryRef"
-        )
-
-        filter_set = set(
-            [match.value for match in filter_path.find(self.layout_full_json)]
-        )
-        measure_set = set(
-            [match.value for match in field_path.find(self.layout_full_json)]
-        )
-        return filter_set.union(measure_set)
-
-    def find_instances(self, fields: list[str]) -> dict[str, bool]:
-        """Compare input fields with the fields used in the pbix file."""
-        matches = {}
-        for field in fields:
-            if "." in field:
-                field_set = self.field_set
-            else:
-                field_set = [measure.split(".")[-1] for measure in self.field_set]
-
-            if field in field_set:
-                matches[field] = True
-        return matches
+    def find_field(self, table_field):
+        """Find if field is used in report."""
+        path = parse(f"$..@[?(@.*=='{table_field}')]")
+        layout = self._return_full_json_layout()
+        return path.find(layout)
 
     def update_fields(self, old: str, new: str) -> None:
         """Iterates through pages and visuals in a pbix and replaces specified measure/column."""
         print(f"Updating: {self.filename}")
-        for i, j, visual in self._generic_visuals_generator():
+        for visual in self._generic_visuals_generator():
             if visual.is_data_visual:
                 visual = Visual.DataVisual(visual.layout)
                 visual.update_fields(old, new)
-                self.layout["sections"][i]["visualContainers"][j] = visual.layout
                 self.updated += visual.updated
+        for bookmark in self.bookmarks:
+            bookmark = Bookmark(bookmark)
+            bookmark.update_fields(old, new)
+        self.config = json.dumps(self.config)
         # TODO: Currently the below causes report level slicers to break.
         # for page in self.pages:
         #     page = ReportPage(page)
         #     page.update_fields(old, new)
         #     self.updated += page.updated
         if self.updated == 0:
-            print("No fields to update")
+            print(f"No fields to update: {self.filename}")
 
     def update_slicers(self) -> None:
         """Iterates through pages and genric visuals and updates slicers."""
-        for i, j, visual in self._generic_visuals_generator():
+        print(f"Updating: {self.filename}")
+        for visual in self._generic_visuals_generator():
             if visual.type == "slicer":
-                slicer = Visual.Slicer(visual)
+                slicer = Visual.Slicer(visual.layout)
                 slicer.unselect_all_items()
-                self.layout["sections"][i]["visualContainers"][j] = slicer.layout
                 self.updated += slicer.updated
         if self.updated == 0:
-            print("No slicers to update")
+            print(f"No slicers to update: {self.filename}")
 
     def write_file(self) -> None:
         """Writes the pbix json to file."""
@@ -98,10 +79,15 @@ class Report:
         os.remove(self.filepath)
         os.rename(temp_filepath, self.filepath)
 
-    def write_json_layout(self) -> None:
-        """Write the cleaned JSON object to file."""
+    def write_layout(self) -> None:
+        """Write the JSON layout object to file."""
         with open("layout.json", "w", encoding="utf-16") as outfile:
-            layout = self._read_full_json_layout()
+            json.dump(self.layout, outfile)
+
+    def write_json_layout(self) -> None:
+        """Write the cleaned JSON layout object to file."""
+        with open("layout.json", "w", encoding="utf-16") as outfile:
+            layout = self._return_full_json_layout()
             json.dump(layout, outfile)
 
     def _read_layout(self, filepath: str) -> dict[str, Any]:
@@ -110,11 +96,18 @@ class Report:
             string = zip_file.read("Report/Layout").decode("utf-16")
             return json.loads(string)
 
-    def _read_full_json_layout(self) -> dict[str, Any]:
+    def _return_full_json_layout(self) -> dict[str, Any]:
         """Return a fully JSONified object of the layout file within the PBIX file."""
         string = json.dumps(self.layout)
         string = self._unescape_json_string(string)
         return json.loads(string)
+
+    def _generic_visuals_generator(self) -> Iterable:
+        """Generator for iterating through all visuals in a file."""
+        for page in self.layout.get("sections"):
+            visuals = page.get("visualContainers")
+            for visual in visuals:
+                yield Visual.GenericVisual(visual)
 
     @staticmethod
     def _unescape_json_string(string: str):
@@ -133,13 +126,6 @@ class Report:
         for original, replacement in replacements.items():
             string = string.replace(original, replacement)
         return string
-
-    def _generic_visuals_generator(self) -> Iterable:
-        """Generator for iterating through all visuals in a file."""
-        for i, page in enumerate(self.layout["sections"]):
-            visuals = page["visualContainers"]
-            for j, visual in enumerate(visuals):
-                yield i, j, Visual.GenericVisual(visual)
 
 
 class ReportPage:
@@ -161,4 +147,32 @@ class ReportPage:
             table_field_old, table_field_new, table_old, table_new, field_old, field_new
         )
 
-        self.page["filters"] = self.filters.filters
+
+class Bookmark:
+    """A class representing the bookmark settings of a report."""
+
+    def __init__(self, bookmark: JsonType) -> None:
+        self.bookmark: JsonType = bookmark
+        self.name = bookmark.get("displayName")
+
+    def update_fields(self, table_field_old: str, table_field_new: str) -> None:
+        """Finds old references to old field and replacements with new field."""
+        table_old, field_old = table_field_old.split(".")
+        table_new, field_new = table_field_new.split(".")
+        self._update_fields(table_old, table_new, field_old, field_new)
+
+    def _update_fields(
+        self, table_old: str, table_new: str, field_old: str, field_new: str
+    ) -> None:
+        root_path = "$..@[?(@.Property=='{field_old}')]"
+        path = parse(root_path.format(field_old=field_old))
+        nodes = path.find(self.bookmark)
+        for node in nodes:
+            if node.value.get("Expression").get("SourceRef").get("Entity") == table_old:
+                field_path = parse(root_path.format(field_old=field_old) + ".Property")
+                field_path.update(node, field_new)
+                table_path = parse(
+                    root_path.format(field_old=field_new)
+                    + ".Expression.SourceRef.Entity"
+                )
+                table_path.update(node, table_new)

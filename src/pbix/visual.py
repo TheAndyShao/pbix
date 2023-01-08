@@ -1,4 +1,4 @@
-"""A module providing tools for manipulating thin Power BI reports"""
+"""A module providing tools for manipulating visual elements within a Power BI Report."""
 
 import json
 import re
@@ -16,7 +16,14 @@ class GenericVisual:
         self.layout: dict[str, Any] = layout
         self.config: dict[str, Any] = json.loads(self.layout.get("config"))  # type: ignore
         self.type: Union[str, None] = self._return_visual_type()
-        non_data_visuals = ["image", "textbox", "shape", "actionButton", None]
+        non_data_visuals = [
+            "image",
+            "textbox",
+            "shape",
+            "basicShape",
+            "actionButton",
+            None,
+        ]
         self.is_data_visual: bool = self.type not in non_data_visuals
         self.updated: int = 0
 
@@ -80,7 +87,7 @@ class DataVisual(GenericVisual):
             )
             if self.data_transforms:
                 self.data_transforms.update_fields(
-                    old, new, table_new, field_old, field_new
+                    old, new, table_old, table_new, field_old, field_new
                 )
             if self.query:
                 self.query.update_fields(
@@ -101,9 +108,11 @@ class Config:
 
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
-        self.single_visual = self.config["singleVisual"]
+        self.single_visual = self.config.get("singleVisual")
+        self.objects = self.single_visual.get("objects", {})
+        self.datapoint = self.objects.get("dataPoint", {})
         self.prototypequery: SemanticQuery = SemanticQuery(
-            self.single_visual["prototypeQuery"]
+            self.single_visual.get("prototypeQuery")
         )
 
     def update_fields(
@@ -120,6 +129,7 @@ class Config:
             table_field_old, table_field_new, table_old, table_new, field_old, field_new
         )
         self._prune_column_properties(table_field_old, table_field_new)
+        self._update_object_datapoints(table_old, table_new, field_old, field_new)
         self._update_singlevisual_table_fields(table_field_old, table_field_new)
 
         # Table field measures act like ids so update these last
@@ -140,6 +150,22 @@ class Config:
             f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata"
         )
         path.update(self.single_visual, table_field_new)
+
+    def _update_object_datapoints(
+        self, table_old: str, table_new: str, field_old: str, field_new: str
+    ) -> None:
+        root_path = "$..@[?(@.Property=='{field_old}')]"
+        path = parse(root_path.format(field_old=field_old))
+        nodes = path.find(self.datapoint)
+        for node in nodes:
+            if node.value.get("Expression").get("SourceRef").get("Entity") == table_old:
+                field_path = parse(root_path.format(field_old=field_old) + ".Property")
+                field_path.update(node, field_new)
+                table_path = parse(
+                    root_path.format(field_old=field_new)
+                    + ".Expression.SourceRef.Entity"
+                )
+                table_path.update(node, table_new)
 
     def _prune_column_properties(
         self, table_field_old: str, table_field_new: str
@@ -168,7 +194,9 @@ class Query:
     ) -> None:
         """Replace field in all relevant query settings."""
         for command in self.commands:
-            query = SemanticQuery(command["SemanticQueryDataShapeCommand"]["Query"])
+            query = SemanticQuery(
+                command.get("SemanticQueryDataShapeCommand").get("Query")
+            )
             query.update_fields(
                 table_field_old,
                 table_field_new,
@@ -184,20 +212,25 @@ class DataTransforms:
 
     def __init__(self, data_transforms: dict[str, Any]) -> None:
         self.data_transforms: dict[str, Any] = data_transforms
-        self.metadata = self.data_transforms.get("queryMetadata")
+        self.metadata = self.data_transforms.get("queryMetadata", {})
+        self.objects = self.data_transforms.get("objects", {})
+        self.datapoint = self.objects.get("dataPoint")
 
     def update_fields(
         self,
         table_field_old: str,
         table_field_new: str,
+        table_old: str,
         table_new: str,
         field_old: str,
         field_new: str,
     ) -> None:
         """Replace fields in all relevant datatransforms settings."""
         self._update_objects_metadata(table_field_old, table_field_new)
+        self._update_object_datapoints(table_old, table_new, field_old, field_new)
         self._update_selects_tables(table_field_old, table_new)
         self._update_selects_fields(table_field_old, field_new)
+        self._update_selects_display_names(table_field_old, field_old, field_new)
         self._update_filters_metadata_tables(field_old, table_new)
         self._update_filters_metadata_fields(field_old, field_new)
 
@@ -217,6 +250,15 @@ class DataTransforms:
         path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].expr.*.Property")
         path.update(self.data_transforms, field)
 
+    def _update_selects_display_names(
+        self, table_field_old: str, field_old: str, field_new: str
+    ) -> None:
+        """Updates display name if no custom display name is found."""
+        path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].displayName")
+        node = path.find(self.data_transforms)
+        if node[0].value == field_old:
+            path.update(self.data_transforms, field_new)
+
     def _update_selects_table_fields(
         self, table_field_old: str, table_field_new: str
     ) -> None:
@@ -232,6 +274,22 @@ class DataTransforms:
             f"$.objects.*[?(@.selector.metadata=='{table_field_old}')].selector.metadata"
         )
         path.update(self.data_transforms, table_field_new)
+
+    def _update_object_datapoints(
+        self, table_old: str, table_new: str, field_old: str, field_new: str
+    ) -> None:
+        root_path = "$..@[?(@.Property=='{field_old}')]"
+        path = parse(root_path.format(field_old=field_old))
+        nodes = path.find(self.datapoint)
+        for node in nodes:
+            if node.value.get("Expression").get("SourceRef").get("Entity") == table_old:
+                field_path = parse(root_path.format(field_old=field_old) + ".Property")
+                field_path.update(node, field_new)
+                table_path = parse(
+                    root_path.format(field_old=field_new)
+                    + ".Expression.SourceRef.Entity"
+                )
+                table_path.update(node, table_new)
 
     def _update_query_metadata_table_fields(
         self, table_field_old: str, table_field_new: str
@@ -453,13 +511,12 @@ class Slicer(DataVisual):
 
     def unselect_all_items(self) -> None:
         """Unselects all slicer members where no default selection is defined"""
-        slicer_path = parse(
-            "$.singleVisual.objects.data[*].properties.isInvertedSelectionMode.`parent`"
-        )
-        selection_path = parse("$.singleVisual.objects.general[*].properties.filter")
-        slicer = slicer_path.find(self.config)
-        if slicer and not selection_path.find(self.config):
+        slicer_path = parse("$.data[*].properties.isInvertedSelectionMode.`parent`")
+        selection_path = parse("$.general[*].properties.filter")
+        slicer = slicer_path.find(self.config.objects)
+        selection = selection_path.find(self.config.objects)
+        if slicer and not selection:
             slicer[0].value.pop("isInvertedSelectionMode")
-            self.layout["config"] = json.dumps(self.config)
+            self.layout["config"] = json.dumps(self.config.config)
             self.updated = 1
-            print(f"Updated: {self.title}")
+            print(f"Updated: {self.title if self.title else 'Untitled Slicer'}")
