@@ -237,6 +237,7 @@ class DataTransforms:
         # Table field measures act like ids so update these last
         self._update_selects_table_fields(table_field_old, table_field_new)
         self._update_query_metadata_table_fields(table_field_old, table_field_new)
+        self._update_projection_active_items(table_field_old, table_field_new)
 
     def _update_selects_tables(self, table_field_old: str, table_new: str) -> None:
         """Update table references in selects."""
@@ -309,6 +310,14 @@ class DataTransforms:
             f"$.Filters[?(@.expression.*.Property=='{field_old}')].expression.*.Property"
         )
         path.update(self.metadata, field_new)
+
+    def _update_projection_active_items(
+        self, table_field_old: str, table_field_new: str
+    ):
+        path = parse(
+            f"$.projectionActiveItems.Values[?(@.queryRef=='{table_field_old}')].queryRef"
+        )
+        path.update(self.data_transforms, table_field_new)
 
 
 class Filters:
