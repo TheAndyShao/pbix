@@ -41,7 +41,7 @@ class Report:
         for bookmark in self.bookmarks:
             bookmark = Bookmark(bookmark)
             bookmark.update_fields(old, new)
-        self.config = json.dumps(self.config)
+        self.layout["config"] = json.dumps(self.config)
         # TODO: Currently the below causes report level slicers to break.
         # for page in self.pages:
         #     page = ReportPage(page)
