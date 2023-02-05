@@ -21,7 +21,7 @@ class Report:
         self.layout: dict[str, Any] = self._read_layout(filepath)
         self.config: JsonType = json.loads(self.layout.get("config"))
         self.bookmarks: list[JsonType] = self.config.get("bookmarks", {})
-        # self.pages = self.layout.get('sections')
+        self.pages = self.layout.get("sections", {})
         self.updated: int = 0
 
     def find_field(self, table_field):
@@ -42,11 +42,10 @@ class Report:
             bookmark = Bookmark(bookmark)
             bookmark.update_fields(old, new)
         self.layout["config"] = json.dumps(self.config)
-        # TODO: Currently the below causes report level slicers to break.
-        # for page in self.pages:
-        #     page = ReportPage(page)
-        #     page.update_fields(old, new)
-        #     self.updated += page.updated
+        for page in self.pages:
+            page = ReportPage(page)
+            page.update_fields(old, new)
+            self.updated += page.updated
         if self.updated == 0:
             print(f"No fields to update: {self.filename}")
 
@@ -136,16 +135,28 @@ class ReportPage:
         self.filters = Visual.Filters(json.loads(self.page.get("filters")))
         self.updated = 0
 
+    def find_field(self, field: str) -> bool:
+        """Find if a field is used in the report filters"""
+        # TODO: Tighten up check to check for tables and field combinations
+        field_path = parse(f"$..@[?(@.[Property, Entity]=='{field}')]")
+        return field_path.find(self.filters.filters)
+
     def update_fields(self, table_field_old: str, table_field_new: str) -> None:
         """Finds usage of an existing field and replaces it with a new specified field."""
-        # TODO: Currently this causes report level slicers to break,
-        # even when the slicers conditions are cleared.
-        # Return to in the future to enable report level slicer updating.
         table_old, field_old = table_field_old.split(".")
         table_new, field_new = table_field_new.split(".")
-        self.filters.update_fields(
-            table_field_old, table_field_new, table_old, table_new, field_old, field_new
-        )
+        if self.find_field(field_old):
+            self.filters.update_fields(
+                table_field_old,
+                table_field_new,
+                table_old,
+                table_new,
+                field_old,
+                field_new,
+            )
+            self.page["filters"] = json.dumps(self.filters.filters)
+            self.updated += 1
+            print("Updated: Report level filters")
 
 
 class Bookmark:
