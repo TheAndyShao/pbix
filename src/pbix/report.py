@@ -133,17 +133,30 @@ class ReportPage:
     def __init__(self, page) -> None:
         self.page = page
         self.filters = Visual.Filters(json.loads(self.page.get("filters")))
-        # TODO: Implement check to see whether page was updated
         self.updated = 0
+
+    def find_field(self, field: str) -> bool:
+        """Find if a field is used in the report filters"""
+        # TODO: Tighten up check to check for tables and field combinations
+        field_path = parse(f"$..@[?(@.[Property, Entity]=='{field}')]")
+        return field_path.find(self.filters.filters)
 
     def update_fields(self, table_field_old: str, table_field_new: str) -> None:
         """Finds usage of an existing field and replaces it with a new specified field."""
         table_old, field_old = table_field_old.split(".")
         table_new, field_new = table_field_new.split(".")
-        self.filters.update_fields(
-            table_field_old, table_field_new, table_old, table_new, field_old, field_new
-        )
-        self.page["filters"] = json.dumps(self.filters.filters)
+        if self.find_field(field_old):
+            self.filters.update_fields(
+                table_field_old,
+                table_field_new,
+                table_old,
+                table_new,
+                field_old,
+                field_new,
+            )
+            self.page["filters"] = json.dumps(self.filters.filters)
+            self.updated += 1
+            print("Updated: Report level filters")
 
 
 class Bookmark:
