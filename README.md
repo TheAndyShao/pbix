@@ -20,8 +20,9 @@ Refer to the included codes samples to see how common functionality can be utili
 
 
 ## Limitations
-- Page level filter field replacement is currently not supported
-- Customised fields like display names are not affected
+### Field Replacement
+- If default visual attributes originally based on fields have been manually overridden, these will not be updated during field replacement, e.g. measure display names, slicer headers, etc.
+- Be mindful when replacing fields in slicers that any saved selections may not make sense when applied to the new slicer field
 
 ## Contributing
 
