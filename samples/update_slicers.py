@@ -16,7 +16,7 @@ def update_slicers(path):
 
 def update_slicers_in_all_reports(path, model):
     """Update slicers in all pbix files in specified directory and all child directories."""
-    pool = multiprocessing.Pool(1)
+    pool = multiprocessing.Pool()
     for subdir, _, files in os.walk(path):
         pool.map(
             update_slicers,
