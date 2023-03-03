@@ -6,15 +6,13 @@ from typing import Any, Union
 
 from jsonpath_ng.ext import parse
 
-JsonType = dict[str, "JsonType"]
-
 
 class GenericVisual:
     """A base class to represent a generic visual object."""
 
     def __init__(self, layout: dict[str, Any]) -> None:
         self.layout: dict[str, Any] = layout
-        self.config: dict[str, Any] = json.loads(self.layout.get("config"))  # type: ignore
+        self.config_generic: dict[str, Any] = json.loads(self.layout.get("config", ""))
         self.type: Union[str, None] = self._return_visual_type()
         non_data_visuals = [
             "image",
@@ -32,13 +30,13 @@ class GenericVisual:
         path = parse(
             "$.singleVisual.vcObjects.title[0].properties.text.expr.Literal.Value"
         )
-        node = path.find(self.config)
+        node = path.find(self.config_generic)
         return node[0].value if node else None
 
     def _return_visual_type(self) -> Union[str, None]:
         """Return type of visual."""
         path = parse("$.singleVisual.visualType")
-        node = path.find(self.config)
+        node = path.find(self.config_generic)
         return node[0].value if node else None
 
 
@@ -48,18 +46,18 @@ class DataVisual(GenericVisual):
     def __init__(self, layout: dict[str, Any]) -> None:
         super().__init__(layout)
         self.title: Union[str, None] = self._return_visual_title()
-        self.filters: Filters = Filters(json.loads(self.layout.get("filters")))  # type: ignore
+        self.filters: Filters = Filters(json.loads(self.layout.get("filters", "")))
         self.query: Union[Query, None] = (
-            Query(json.loads(self.layout.get("query")))  # type: ignore
+            Query(json.loads(self.layout.get("query", "")))
             if "query" in self.layout
             else None
         )
         self.data_transforms: Union[DataTransforms, None] = (
-            DataTransforms(json.loads(self.layout.get("dataTransforms")))  # type: ignore
+            DataTransforms(json.loads(self.layout.get("dataTransforms", "")))
             if "dataTransforms" in self.layout
             else None
         )
-        self.config: Config = Config(self.config)
+        self.config: Config = Config(self.config_generic)
         self.visual_options = {
             "config": self.config.config,
             "filters": self.filters.filters,
@@ -107,10 +105,10 @@ class Config:
     """A class representing the config settings of a visual."""
 
     def __init__(self, config: dict[str, Any]) -> None:
-        self.config = config
-        self.single_visual = self.config.get("singleVisual")
-        self.objects = self.single_visual.get("objects", {})
-        self.datapoint = self.objects.get("dataPoint", {})
+        self.config: dict[str, Any] = config
+        self.single_visual: dict[str, Any] = self.config.get("singleVisual", {})
+        self.objects: dict[str, Any] = self.single_visual.get("objects", {})
+        self.datapoint: list[dict[str, Any]] = self.objects.get("dataPoint", [])
         self.prototypequery: SemanticQuery = SemanticQuery(
             self.single_visual.get("prototypeQuery")
         )
@@ -179,9 +177,9 @@ class Config:
 class Query:
     """A class representing the query settings of a visual"""
 
-    def __init__(self, visual_query) -> None:
-        self.visual_query = visual_query
-        self.commands = self.visual_query.get("Commands")
+    def __init__(self, visual_query: dict[str, Any]) -> None:
+        self.visual_query: dict[str, Any] = visual_query
+        self.commands: list[dict[str, Any]] = self.visual_query.get("Commands", [])
 
     def update_fields(
         self,
@@ -195,7 +193,7 @@ class Query:
         """Replace field in all relevant query settings."""
         for command in self.commands:
             query = SemanticQuery(
-                command.get("SemanticQueryDataShapeCommand").get("Query")
+                command.get("SemanticQueryDataShapeCommand", {}).get("Query")
             )
             query.update_fields(
                 table_field_old,
@@ -212,9 +210,9 @@ class DataTransforms:
 
     def __init__(self, data_transforms: dict[str, Any]) -> None:
         self.data_transforms: dict[str, Any] = data_transforms
-        self.metadata = self.data_transforms.get("queryMetadata", {})
-        self.objects = self.data_transforms.get("objects", {})
-        self.datapoint = self.objects.get("dataPoint")
+        self.metadata: dict[str, Any] = self.data_transforms.get("queryMetadata", {})
+        self.objects: dict[str, Any] = self.data_transforms.get("objects", {})
+        self.datapoint: list[dict[str, Any]] = self.objects.get("dataPoint", [])
 
     def update_fields(
         self,
@@ -323,8 +321,8 @@ class DataTransforms:
 class Filters:
     """A class representing the filter object of a visual."""
 
-    def __init__(self, filters: JsonType) -> None:
-        self.filters = filters
+    def __init__(self, filters: list[dict[str, Any]]) -> None:
+        self.filters: list[dict[str, Any]] = filters
 
     def update_fields(
         self,
@@ -418,7 +416,6 @@ class SemanticQuery:
         node = path.find(self.frm)
         if node:
             return node[0].value
-        return
 
     def _return_from_tables(self) -> list[str]:
         """Returns all the currently used table name aliases in the prototypequery."""
@@ -488,7 +485,7 @@ class SemanticQuery:
         path.update(self.order_by, field_new)
 
     # 'Where' setting methods
-    def _return_where_tables(self, alias: str) -> list[str]:
+    def _return_where_tables(self, alias: Union[str, None]) -> list[str]:
         path = parse(f"$[?(@..Source!='{alias}')]..Source")
         nodes = path.find(self.where)
         return [node.value for node in nodes]
