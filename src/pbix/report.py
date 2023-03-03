@@ -3,13 +3,12 @@
 import json
 import os
 import zipfile as zf
-from typing import Any, Iterable, Union
+from typing import Any, Iterable
 
+from jsonpath_ng import DatumInContext
 from jsonpath_ng.ext import parse
 
 from pbix import visual as Visual
-
-JsonType = dict[str, Union[list["JsonType"], "JsonType"]]
 
 
 class Report:
@@ -19,12 +18,12 @@ class Report:
         self.filepath: str = filepath
         self.filename: str = os.path.basename(filepath)
         self.layout: dict[str, Any] = self._read_layout(filepath)
-        self.config: JsonType = json.loads(self.layout.get("config"))
-        self.bookmarks: list[JsonType] = self.config.get("bookmarks", {})
-        self.pages = self.layout.get("sections", {})
+        self.config: dict[str, Any] = json.loads(self.layout.get("config", ""))
+        self.bookmarks: list[dict[str, Any]] = self.config.get("bookmarks", [])
+        self.pages: list[dict[str, Any]] = self.layout.get("sections", [])
         self.updated: int = 0
 
-    def find_field(self, table_field):
+    def find_field(self, table_field: str) -> list[DatumInContext]:
         """Find if field is used in report."""
         path = parse(f"$..@[?(@.*=='{table_field}')]")
         layout = self._return_full_json_layout()
@@ -103,7 +102,7 @@ class Report:
 
     def _generic_visuals_generator(self) -> Iterable:
         """Generator for iterating through all visuals in a file."""
-        for page in self.layout.get("sections"):
+        for page in self.layout.get("sections", []):
             visuals = page.get("visualContainers")
             for visual in visuals:
                 yield Visual.GenericVisual(visual)
@@ -130,12 +129,14 @@ class Report:
 class ReportPage:
     """A class representing a single page within a report."""
 
-    def __init__(self, page) -> None:
-        self.page = page
-        self.filters = Visual.Filters(json.loads(self.page.get("filters")))
-        self.updated = 0
+    def __init__(self, page: dict[str, Any]) -> None:
+        self.page: dict[str, Any] = page
+        self.filters: Visual.Filters = Visual.Filters(
+            json.loads(self.page.get("filters", ""))
+        )
+        self.updated: int = 0
 
-    def find_field(self, field: str) -> bool:
+    def find_field(self, field: str) -> list[DatumInContext]:
         """Find if a field is used in the report filters"""
         # TODO: Tighten up check to check for tables and field combinations
         field_path = parse(f"$..@[?(@.[Property, Entity]=='{field}')]")
@@ -162,8 +163,8 @@ class ReportPage:
 class Bookmark:
     """A class representing the bookmark settings of a report."""
 
-    def __init__(self, bookmark: JsonType) -> None:
-        self.bookmark: JsonType = bookmark
+    def __init__(self, bookmark: dict[str, Any]) -> None:
+        self.bookmark: dict[str, Any] = bookmark
         self.name = bookmark.get("displayName")
 
     def update_fields(self, table_field_old: str, table_field_new: str) -> None:
