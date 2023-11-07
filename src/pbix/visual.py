@@ -20,6 +20,7 @@ class GenericVisual:
             "shape",
             "basicShape",
             "actionButton",
+            "pageNavigator",
             None,
         ]
         self.is_data_visual: bool = self.type not in non_data_visuals
@@ -255,8 +256,9 @@ class DataTransforms:
         """Updates display name if no custom display name is found."""
         path = parse(f"$.selects[?(@.queryName=='{table_field_old}')].displayName")
         node = path.find(self.data_transforms)
-        if node[0].value == field_old:
-            path.update(self.data_transforms, field_new)
+        if node:
+            if node[0].value == field_old:
+                path.update(self.data_transforms, field_new)
 
     def _update_selects_table_fields(
         self, table_field_old: str, table_field_new: str
